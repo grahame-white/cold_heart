@@ -53,4 +53,28 @@ public class Tests
         Assert.That(_gen.Root.LeftChild!.LeftChild, Is.Not.Null);
         Assert.That(_gen.Root.LeftChild!.LeftChild!.Value, Is.EqualTo(new BigInteger(4)));
     }
+
+    [Test]
+    public void Add_HandlesComplexSequence()
+    {
+        _gen.Add(3);
+        // Path: 3 -> 10 -> 5 -> 16 -> 8 -> 4 -> 2 -> 1
+        // Should build tree with proper parent-child relationships
+        Assert.That(_gen.Root.LeftChild, Is.Not.Null);
+        Assert.That(_gen.Root.LeftChild!.Value, Is.EqualTo(new BigInteger(2)));
+    }
+
+    [Test]
+    public void Add_DoesNotDuplicateExistingNodes()
+    {
+        _gen.Add(2);
+        _gen.Add(4);
+
+        // Both 2 and 4 should be in tree, but no duplicates
+        // 4 -> 2 -> 1, so 2 should already exist when adding 4
+        Assert.That(_gen.Root.LeftChild, Is.Not.Null);
+        Assert.That(_gen.Root.LeftChild!.Value, Is.EqualTo(new BigInteger(2)));
+        Assert.That(_gen.Root.LeftChild!.LeftChild, Is.Not.Null);
+        Assert.That(_gen.Root.LeftChild!.LeftChild!.Value, Is.EqualTo(new BigInteger(4)));
+    }
 }
