@@ -28,13 +28,6 @@ public class SequenceGenerator
 
     private static BigInteger GetNext(BigInteger inputNumber)
     {
-        if (inputNumber % 2 == 0)
-        {
-            return inputNumber / 2;
-        }
-        else
-        {
-            return 3 * inputNumber + 1;
-        }
+        return inputNumber % 2 == 0 ? inputNumber / 2 : 3 * inputNumber + 1;
     }
 }
