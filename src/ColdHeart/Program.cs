@@ -11,16 +11,18 @@ internal class Program
 {
     private const Int32 UPPER_LIMIT = 1000;
 
-    static async Task<int> Main(String[] args)
+    static async Task<Int32> Main(String[] args)
     {
         try
         {
             SequenceGenerator generator;
-            string? loadFile = null;
-            string? saveFile = null;
+            String? loadFile = null;
+            String? saveFile = null;
+            String? svgFile = null;
+            String? pngFile = null;
 
             // Parse command line arguments
-            for (int i = 0; i < args.Length; i++)
+            for (Int32 i = 0; i < args.Length; i++)
             {
                 switch (args[i])
                 {
@@ -43,6 +45,28 @@ internal class Program
                         else
                         {
                             Console.WriteLine("Error: --save requires a filename");
+                            return 1;
+                        }
+                        break;
+                    case "--svg":
+                        if (i + 1 < args.Length)
+                        {
+                            svgFile = args[++i];
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: --svg requires a filename");
+                            return 1;
+                        }
+                        break;
+                    case "--png":
+                        if (i + 1 < args.Length)
+                        {
+                            pngFile = args[++i];
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: --png requires a filename");
                             return 1;
                         }
                         break;
@@ -90,6 +114,26 @@ internal class Program
                 Console.WriteLine("Sequence saved successfully.");
             }
 
+            // Export visualizations if specified
+            if (svgFile != null || pngFile != null)
+            {
+                var visualizer = new TreeMapVisualizer();
+
+                if (svgFile != null)
+                {
+                    Console.WriteLine($"Exporting tree visualization to SVG '{svgFile}'...");
+                    await visualizer.ExportToSvgAsync(generator.Root, svgFile);
+                    Console.WriteLine("SVG export completed successfully.");
+                }
+
+                if (pngFile != null)
+                {
+                    Console.WriteLine($"Exporting tree visualization to PNG '{pngFile}'...");
+                    visualizer.ExportToPng(generator.Root, pngFile);
+                    Console.WriteLine("PNG export completed successfully.");
+                }
+            }
+
             return 0;
         }
         catch (FileNotFoundException ex)
@@ -129,11 +173,14 @@ internal class Program
         Console.WriteLine("Options:");
         Console.WriteLine("  --load <filename>   Load a previously serialized sequence from file");
         Console.WriteLine("  --save <filename>   Save the generated sequence to file");
+        Console.WriteLine("  --svg <filename>    Export tree visualization to SVG format");
+        Console.WriteLine("  --png <filename>    Export tree visualization to PNG format");
         Console.WriteLine("  --help, -h          Show this help message");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  ColdHeart --save sequence.json");
-        Console.WriteLine("  ColdHeart --load sequence.json");
-        Console.WriteLine("  ColdHeart --load old.json --save new.json");
+        Console.WriteLine("  ColdHeart --load sequence.json --svg tree.svg");
+        Console.WriteLine("  ColdHeart --svg tree.svg --png tree.png");
+        Console.WriteLine("  ColdHeart --load old.json --save new.json --svg tree.svg");
     }
 }

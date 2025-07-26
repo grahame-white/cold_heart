@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -295,11 +296,11 @@ public class Tests
         }
     }
 
-    private async Task<string> CreateTestSequenceFile()
+    private async Task<String> CreateTestSequenceFile()
     {
         _gen.Add(2);
         _gen.Add(4);
-        var tempFile = Path.GetTempFileName();
+        String tempFile = Path.GetTempFileName();
         await _gen.SaveToFileAsync(tempFile);
         return tempFile;
     }
