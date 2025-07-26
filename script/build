@@ -6,7 +6,7 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-echo "==> Building Logica..."
+echo "==> Building ColdHeart..."
 
 # Clean and build the solution
 dotnet clean
