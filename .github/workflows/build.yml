@@ -1,0 +1,60 @@
+---
+name: Build Solution
+
+on:
+  pull_request_target:
+    branches: ['dependabot/**']
+
+  pull_request:
+    types: [opened, synchronize, edited]
+
+  merge_group:
+  workflow_dispatch:
+
+
+env:
+  SOLUTION_PATH: "./Logica.sln"
+
+permissions: read-all
+
+jobs:
+
+  build:
+
+    strategy:
+      matrix:
+        targetplatform: [x64]
+
+    runs-on: ubuntu-latest
+    env:
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.7
+        with:
+          # Get all history to be able to identify changed files
+          fetch-depth: 0
+
+      - name: Install .NET Core
+        uses: actions/setup-dotnet@v4.3.1
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache Nuget Packages
+        uses: actions/cache@v4.2.3
+        with:
+          path: ${{ github.workspace }}\.nuget\packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }} #hash of project files
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore Nuget Packages
+        run: |
+          dotnet restore "${{ env.SOLUTION_PATH }}"
+
+      - name: Build in Debug Mode
+        run: dotnet build "${{ env.SOLUTION_PATH }}" --configuration Debug --no-restore
+
+      - name: Run Unit Tests
+        run: dotnet test "${{ env.SOLUTION_PATH }}" --no-restore --verbosity normal

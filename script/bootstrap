@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# script/bootstrap
+# Resolve all dependencies that the application requires to run
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+echo "==> Bootstrapping ColdHeart dependencies..."
+
+# Check if .NET is installed
+if ! command -v dotnet &>/dev/null; then
+    echo "Error: .NET SDK is not installed. Please install .NET >= 8.0 SDK."
+    echo "Visit: https://dotnet.microsoft.com/download"
+    exit 1
+fi
+
+# Check .NET version
+DOTNET_VERSION=$(dotnet --version)
+echo "==> Found .NET version: $DOTNET_VERSION"
+
+# Restore NuGet packages
+echo "==> Restoring NuGet packages..."
+dotnet restore
+
+echo "==> Bootstrap completed successfully!"
+echo "==> All dependencies are now installed"

@@ -1,0 +1,270 @@
+#!/usr/bin/env bash
+# script/lint
+# Run super-linter locally with the same configuration as the GitHub Actions workflow
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+echo "==> Running ColdHeart code linting..."
+
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Default branch constant for super-linter comparison baseline
+# The workflow uses github.base_ref || 'main', but for local development
+# we use a hardcoded 'main' value for consistency and predictability
+# Note: The ensure_default_branch_exists() function handles complex git scenarios
+DEFAULT_BRANCH="main"
+
+# Function to ensure the default branch exists locally
+ensure_default_branch_exists() {
+    local default_branch="$1"
+
+    if command_exists git && [ -d ".git" ]; then
+        # Check if local branch exists
+        local local_branch_exists=false
+        if git show-ref --verify --quiet "refs/heads/$default_branch"; then
+            local_branch_exists=true
+        fi
+
+        # Check if remote branch exists
+        local remote_branch_exists=false
+        if git show-ref --verify --quiet "refs/remotes/origin/$default_branch"; then
+            remote_branch_exists=true
+        fi
+
+        # If neither local nor remote branch exists, try to fetch it
+        if [ "$local_branch_exists" = false ] && [ "$remote_branch_exists" = false ]; then
+            echo "==> Default branch '$default_branch' not found locally"
+            echo "    Attempting to fetch from origin..."
+
+            # Try to fetch the default branch and capture error details
+            if fetch_error=$(git fetch origin "$default_branch:$default_branch" 2>&1); then
+                echo "    ✅ Fetched '$default_branch' branch from origin"
+            else
+                echo "    ⚠️  Could not fetch '$default_branch' branch"
+                echo "    Error details: $fetch_error"
+                echo "    Super-linter will attempt to use available branches"
+            fi
+        fi
+    fi
+}
+
+# Check if Docker is available
+if ! command_exists docker; then
+    echo "❌ Error: Docker is not installed or not available in PATH."
+    echo "   Super-linter requires Docker to run."
+    echo "   Please install Docker: https://docs.docker.com/get-docker/"
+    exit 1
+fi
+
+# Check if Docker daemon is running
+if ! docker info >/dev/null 2>&1; then
+    echo "❌ Error: Docker daemon is not running."
+    echo "   Please start Docker and try again."
+    exit 1
+fi
+
+# Function to display results based on exit status and mode
+display_results() {
+    local exit_status=$1
+    local fix_mode=$2
+
+    echo ""
+    if [ "$exit_status" -eq 0 ]; then
+        if [ "$fix_mode" = true ]; then
+            echo "✅ Linting and auto-fixing completed successfully!"
+            echo "==> All fixable issues have been automatically resolved"
+            echo "==> Please review the changes and commit them"
+        else
+            echo "✅ Linting completed successfully!"
+            echo "==> All checks passed"
+        fi
+    else
+        if [ "$fix_mode" = true ]; then
+            echo "❌ Linting found issues that need attention"
+            echo "==> Some issues were automatically fixed, but others require manual intervention"
+            echo "==> Please review the output above and address any remaining issues"
+            echo "==> Note: EditorConfig issues cannot be auto-fixed"
+        else
+            echo "❌ Linting found issues that need to be addressed"
+            echo "==> Please review the output above and fix the reported issues"
+            echo "==> Consider using --fix to automatically fix supported issues"
+        fi
+    fi
+}
+
+# Function to setup environment variables for fix mode
+setup_fix_mode_env_vars() {
+    local -n docker_cmd_ref=$1
+
+    # Add fix mode environment variables for commonly used linters
+    docker_cmd_ref+=(
+        # Shell and scripting
+        -e "FIX_SHELL_SHFMT=true" # Shell script formatting
+
+        # .NET and C#
+        -e "FIX_CSHARP=true"                       # C# formatting
+        -e "FIX_DOTNET_SLN_FORMAT_WHITESPACE=true" # .NET whitespace formatting
+        -e "FIX_DOTNET_SLN_FORMAT_STYLE=true"      # .NET style formatting
+
+        # Web technologies (CSS, JavaScript, TypeScript)
+        -e "FIX_CSS=true"                 # CSS/SCSS linting fixes
+        -e "FIX_CSS_PRETTIER=true"        # CSS/SCSS formatting with Prettier
+        -e "FIX_JAVASCRIPT_ES=true"       # JavaScript ESLint fixes
+        -e "FIX_JAVASCRIPT_PRETTIER=true" # JavaScript formatting with Prettier
+        -e "FIX_TYPESCRIPT_ES=true"       # TypeScript ESLint fixes
+        -e "FIX_TYPESCRIPT_PRETTIER=true" # TypeScript formatting with Prettier
+
+        # Data formats
+        -e "FIX_JSON=true"          # JSON linting fixes
+        -e "FIX_JSON_PRETTIER=true" # JSON formatting with Prettier
+        -e "FIX_YAML_PRETTIER=true" # YAML formatting with Prettier
+
+        # Documentation and content
+        -e "FIX_MARKDOWN=true"          # Markdown linting fixes
+        -e "FIX_MARKDOWN_PRETTIER=true" # Markdown formatting with Prettier
+        -e "FIX_NATURAL_LANGUAGE=true"  # Natural language fixes with textlint
+
+        # Python
+        -e "FIX_PYTHON_BLACK=true" # Python formatting with Black
+        -e "FIX_PYTHON_ISORT=true" # Python import sorting
+        -e "FIX_PYTHON_RUFF=true"  # Python linting fixes with Ruff
+    )
+}
+
+# Get default branch for DEFAULT_BRANCH setting (matches workflow: github.base_ref || 'main')
+# Ensure the default branch exists locally for comparison
+ensure_default_branch_exists "$DEFAULT_BRANCH"
+VALIDATE_ALL_CODEBASE=false
+LOG_LEVEL="NOTICE"
+DRY_RUN=false
+FIX_MODE=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+    --all | --validate-all)
+        VALIDATE_ALL_CODEBASE=true
+        shift
+        ;;
+    --verbose)
+        LOG_LEVEL="DEBUG"
+        shift
+        ;;
+    --info)
+        LOG_LEVEL="INFO"
+        shift
+        ;;
+    --dry-run)
+        DRY_RUN=true
+        shift
+        ;;
+    --fix | --auto-fix)
+        FIX_MODE=true
+        shift
+        ;;
+    --help)
+        echo "Usage: $0 [options]"
+        echo ""
+        echo "Run super-linter locally with the same configuration as GitHub Actions"
+        echo ""
+        echo "Options:"
+        echo "  --all, --validate-all  Validate entire codebase (default: only changed files)"
+        echo "  --verbose              Enable verbose debug logging"
+        echo "  --info                 Enable info level logging"
+        echo "  --dry-run              Show the Docker command that would be run"
+        echo "  --fix, --auto-fix      Enable auto-fix mode for supported linters"
+        echo "  --help                 Show this help message"
+        echo ""
+        echo "Examples:"
+        echo "  $0                     # Lint only changed files"
+        echo "  $0 --all               # Lint entire codebase"
+        echo "  $0 --verbose           # Lint with detailed output"
+        echo "  $0 --fix               # Auto-fix issues where possible"
+        echo ""
+        echo "Auto-fix mode enables automatic fixing for the following linters:"
+        echo "  - Shell scripts (shfmt)"
+        echo "  - C# code (dotnet format)"
+        echo "  - CSS/SCSS (prettier, stylelint)"
+        echo "  - JavaScript/TypeScript (prettier, eslint)"
+        echo "  - JSON (prettier)"
+        echo "  - Markdown (prettier)"
+        echo "  - YAML (prettier)"
+        echo "  - Python (black, isort, ruff)"
+        echo "  - Natural language (textlint)"
+        echo "  - And more..."
+        echo ""
+        echo "Note: EditorConfig issues cannot be auto-fixed and must be addressed manually."
+        exit 0
+        ;;
+    *)
+        echo "Unknown option: $1"
+        echo "Use --help for usage information"
+        exit 1
+        ;;
+    esac
+done
+
+# Set up environment variables to match GitHub Actions workflow
+SUPER_LINTER_VERSION="v8.0.0"
+WORKSPACE_PATH="$(pwd)"
+
+echo "==> Configuration:"
+echo "    Super-linter version: $SUPER_LINTER_VERSION"
+echo "    Workspace: $WORKSPACE_PATH"
+echo "    Default branch: $DEFAULT_BRANCH"
+echo "    Validate all codebase: $VALIDATE_ALL_CODEBASE"
+echo "    Log level: $LOG_LEVEL"
+echo "    Fix mode: $FIX_MODE"
+
+# Build Docker command with organized environment variables
+DOCKER_CMD=(
+    docker run --rm
+    # Core super-linter configuration
+    -e "LOG_LEVEL=$LOG_LEVEL"
+    -e "RUN_LOCAL=true"
+    -e "VALIDATE_ALL_CODEBASE=$VALIDATE_ALL_CODEBASE"
+    -e "DEFAULT_BRANCH=$DEFAULT_BRANCH"
+    -e "LINTER_RULES_PATH=.github/linters"
+    # Volume mount for workspace
+    -v "$WORKSPACE_PATH:/tmp/lint"
+)
+
+# Add fix mode environment variables if enabled
+if [ "$FIX_MODE" = true ]; then
+    setup_fix_mode_env_vars DOCKER_CMD
+fi
+
+DOCKER_CMD+=("ghcr.io/super-linter/super-linter:$SUPER_LINTER_VERSION")
+
+if [ "$DRY_RUN" = true ]; then
+    echo ""
+    echo "==> Docker command that would be executed:"
+    printf '%s ' "${DOCKER_CMD[@]}"
+    echo ""
+    exit 0
+fi
+
+echo ""
+echo "==> Pulling super-linter Docker image..."
+docker pull "ghcr.io/super-linter/super-linter:$SUPER_LINTER_VERSION"
+
+echo ""
+echo "==> Running super-linter..."
+echo "    This may take a few minutes on first run..."
+echo ""
+
+# Run super-linter and capture exit status
+"${DOCKER_CMD[@]}"
+exit_status=$?
+
+# Display results based on exit status and mode
+display_results "$exit_status" "$FIX_MODE"
+
+# Exit with same status as super-linter
+if [ "$exit_status" -ne 0 ]; then
+    exit 1
+fi

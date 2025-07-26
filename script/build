@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# script/build
+# Build the project
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+echo "==> Building Logica..."
+
+# Clean and build the solution
+dotnet clean
+dotnet build --configuration Release --no-restore
+
+echo "==> Build completed successfully!"
