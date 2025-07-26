@@ -1,0 +1,14 @@
+{
+  "threshold": 5,
+  "reporters": ["console"],
+  "ignore": ["**/node_modules/**", "**/.git/**", "**/bin/**", "**/obj/**"],
+  "format": ["csharp", "yaml", "markdown"],
+  "minLines": 10,
+  "minTokens": 100,
+  "maxLines": 500,
+  "maxSize": "50kb",
+  "skipComments": true,
+  "gitignore": true,
+  "noSymlinks": true,
+  "silent": false
+}

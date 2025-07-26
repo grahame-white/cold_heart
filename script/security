@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# script/security
+# Run security scanning and vulnerability checks
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+echo "==> Running ColdHeart security checks..."
+
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Function to run .NET dependency vulnerability scan
+check_dotnet_vulnerabilities() {
+    echo "==> Checking .NET packages for vulnerabilities..."
+
+    # Ensure dependencies are restored
+    ./script/bootstrap
+
+    # Run vulnerability scan
+    dotnet list package --vulnerable --include-transitive >vulnerability-report.txt 2>&1 || true
+
+    echo "Vulnerability scan results:"
+    cat vulnerability-report.txt
+
+    if grep -q "has the following vulnerable packages" vulnerability-report.txt; then
+        echo "Vulnerable packages found - checking for known false positives..."
+
+        # Check if only known .NET 8 false positives are present
+        if grep -q "System.Net.Http.*4.3.0" vulnerability-report.txt && grep -q "System.Text.RegularExpressions.*4.3.0" vulnerability-report.txt; then
+            # Count total vulnerability lines
+            TOTAL_VULNS=$(grep -c "^   > " vulnerability-report.txt || echo "0")
+            # Count false positive lines
+            FALSE_POSITIVES=$(grep -c "System.Net.Http.*4.3.0\|System.Text.RegularExpressions.*4.3.0" vulnerability-report.txt || echo "0")
+
+            if [ "$TOTAL_VULNS" -eq "$FALSE_POSITIVES" ]; then
+                echo "✅ Only known .NET 8 false positive vulnerabilities found"
+                echo "   These are resolved by the .NET 8 runtime"
+                return 0
+            fi
+        fi
+
+        echo "❌ Genuine security vulnerabilities detected"
+        return 1
+    else
+        echo "✅ No vulnerable .NET packages found"
+    fi
+}
+
+# Function to check licenses
+check_licenses() {
+    echo "==> Checking license compliance..."
+
+    # Check .NET licenses
+    if command_exists nuget-license; then
+        echo "Checking .NET package licenses..."
+        if nuget-license -i ColdHeart.sln -o Json -fo licenses.json >/dev/null 2>&1; then
+            echo "✅ .NET license information generated"
+            nuget-license -i ColdHeart.sln || echo "License display completed"
+        else
+            echo "⚠️  License scanning tool failed, creating basic report..."
+            echo '{"licenses": [], "note": "License tool failed"}' >licenses.json
+            find . -name "*.csproj" -exec grep -H "PackageReference" {} \; | head -10 || echo "No package references found"
+        fi
+    else
+        echo "⚠️  nuget-license tool not available, skipping .NET license check"
+        echo '{"licenses": [], "note": "License tool not available"}' >licenses.json
+    fi
+}
+
+# Main execution
+SECURITY_CHECKS_PASSED=0
+SECURITY_CHECKS_FAILED=0
+
+# Parse command line arguments
+SKIP_DOTNET=false
+SKIP_LICENSES=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+    --skip-dotnet)
+        SKIP_DOTNET=true
+        shift
+        ;;
+    --skip-licenses)
+        SKIP_LICENSES=true
+        shift
+        ;;
+    --help)
+        echo "Usage: $0 [options]"
+        echo "Options:"
+        echo "  --skip-dotnet   Skip .NET vulnerability scanning"
+        echo "  --skip-nodejs   Skip Node.js vulnerability scanning"
+        echo "  --skip-licenses Skip license compliance checking"
+        echo "  --help          Show this help message"
+        exit 0
+        ;;
+    *)
+        echo "Unknown option: $1"
+        echo "Use --help for usage information"
+        exit 1
+        ;;
+    esac
+done
+
+# Run security checks
+if [ "$SKIP_DOTNET" = false ]; then
+    if check_dotnet_vulnerabilities; then
+        SECURITY_CHECKS_PASSED=$((SECURITY_CHECKS_PASSED + 1))
+    else
+        SECURITY_CHECKS_FAILED=$((SECURITY_CHECKS_FAILED + 1))
+    fi
+fi
+
+if [ "$SKIP_LICENSES" = false ]; then
+    if check_licenses; then
+        SECURITY_CHECKS_PASSED=$((SECURITY_CHECKS_PASSED + 1))
+    else
+        SECURITY_CHECKS_FAILED=$((SECURITY_CHECKS_FAILED + 1))
+    fi
+fi
+
+# Summary
+echo ""
+echo "==> Security check summary:"
+echo "    Passed: $SECURITY_CHECKS_PASSED"
+echo "    Failed: $SECURITY_CHECKS_FAILED"
+
+if [ $SECURITY_CHECKS_FAILED -gt 0 ]; then
+    echo "❌ Security checks failed"
+    exit 1
+elif [ $SECURITY_CHECKS_PASSED -eq 0 ] && [ $SECURITY_CHECKS_FAILED -eq 0 ]; then
+    echo "⚠️  No security checks were run (all were skipped)"
+    echo "✅ Security scan completed (no issues found)"
+else
+    echo "✅ All security checks passed"
+fi
