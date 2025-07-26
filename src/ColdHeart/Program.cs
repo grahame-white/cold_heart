@@ -8,7 +8,7 @@ internal class Program
 {
     private const Int32 UPPER_LIMIT = 1000000;
 
-    static void Main(String[] args)
+    static void Main(String[] _)
     {
         var generator = new SequenceGenerator();
         for (BigInteger i = 1; i < UPPER_LIMIT; i++)
