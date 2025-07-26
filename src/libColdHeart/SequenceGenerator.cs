@@ -4,27 +4,83 @@ using System.Numerics;
 
 namespace libColdHeart;
 
+public class TreeNode
+{
+    public BigInteger Value { get; }
+    public TreeNode? LeftChild { get; set; }
+    public TreeNode? RightChild { get; set; }
+
+    public TreeNode(BigInteger value)
+    {
+        Value = value;
+    }
+}
+
 public class SequenceGenerator
 {
-    // Key, next value
-    public Dictionary<BigInteger, BigInteger> Sequence { get; }
+    public TreeNode Root { get; }
+    private readonly Dictionary<BigInteger, TreeNode> _nodeMap;
 
     public SequenceGenerator()
     {
-        Sequence = [];
+        Root = new TreeNode(1);
+        _nodeMap = new Dictionary<BigInteger, TreeNode> { { 1, Root } };
     }
 
     public void Add(BigInteger inputNumber)
     {
-        BigInteger currentNumber = inputNumber;
-
-        while (!Sequence.ContainsKey(currentNumber))
+        if (inputNumber == 1)
         {
-            BigInteger nextValue = GetNext(currentNumber);
-            Console.WriteLine($"{currentNumber} -> {nextValue}");
-            Sequence[currentNumber] = nextValue;
-            currentNumber = nextValue;
+            return; // Root already exists
         }
+
+        BuildPathToRoot(inputNumber);
+    }
+
+    private void BuildPathToRoot(BigInteger number)
+    {
+        BigInteger currentNumber = number;
+        var path = new List<BigInteger>();
+
+        // Build forward path using traditional Collatz sequence
+        while (!_nodeMap.ContainsKey(currentNumber))
+        {
+            path.Add(currentNumber);
+            currentNumber = GetNext(currentNumber);
+        }
+
+        // Now add nodes to tree in reverse order (from known node back to input)
+        TreeNode? knownNode = _nodeMap[currentNumber];
+        
+        for (int i = path.Count - 1; i >= 0; i--)
+        {
+            BigInteger nodeValue = path[i];
+            
+            if (!_nodeMap.ContainsKey(nodeValue))
+            {
+                TreeNode newNode = new TreeNode(nodeValue);
+                _nodeMap[nodeValue] = newNode;
+                
+                // Add as child to the previous node in the reverse path
+                AddChildToParent(knownNode, newNode);
+                Console.WriteLine($"{knownNode.Value} -> {newNode.Value}");
+            }
+            
+            knownNode = _nodeMap[nodeValue];
+        }
+    }
+
+    private static void AddChildToParent(TreeNode parent, TreeNode child)
+    {
+        if (parent.LeftChild == null)
+        {
+            parent.LeftChild = child;
+        }
+        else if (parent.RightChild == null)
+        {
+            parent.RightChild = child;
+        }
+        // If both children exist, we don't add (should not happen in normal Collatz)
     }
 
     private static BigInteger GetNext(BigInteger inputNumber)

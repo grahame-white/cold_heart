@@ -14,45 +14,43 @@ public class Tests
     }
 
     [Test]
-    public void Sequence_Initially_Empty()
+    public void Root_Initially_HasValue1()
     {
-        Assert.That(_gen.Sequence.Count, Is.Zero);
+        Assert.That(_gen.Root.Value, Is.EqualTo(new BigInteger(1)));
     }
 
     [Test]
-    public void Add_AddsKeyToSequence_WhenKeyNotInSequence()
+    public void Root_Initially_HasNoChildren()
+    {
+        Assert.That(_gen.Root.LeftChild, Is.Null);
+        Assert.That(_gen.Root.RightChild, Is.Null);
+    }
+
+    [Test]
+    public void Add_DoesNothing_WhenInputIs1()
     {
         _gen.Add(1);
-        Assert.That(_gen.Sequence.ContainsKey(1), Is.True);
+        Assert.That(_gen.Root.LeftChild, Is.Null);
+        Assert.That(_gen.Root.RightChild, Is.Null);
     }
 
     [Test]
-    public void Add_SetsSequenceValueTo3nPlus1_WhenKeyIsOdd()
+    public void Add_AddsNodeToTree_WhenInputIsNot1()
     {
-        BigInteger oddKey = 1;
-        _gen.Add(1);
-
-        BigInteger next = 3 * oddKey + 1;
-        Assert.That(_gen.Sequence[1], Is.EqualTo(next));
-    }
-
-    [Test]
-    public void Add_SetsSequenceValueTonDividedBy2_WhenKeyIsEven()
-    {
-        BigInteger evenKey = 2;
         _gen.Add(2);
-
-        BigInteger next = evenKey / 2;
-        Assert.That(_gen.Sequence[2], Is.EqualTo(next));
+        Assert.That(_gen.Root.LeftChild, Is.Not.Null);
+        Assert.That(_gen.Root.LeftChild!.Value, Is.EqualTo(new BigInteger(2)));
     }
 
     [Test]
-    public void Add_ContinuesToAddValues_UntilKeyIsInSequence()
+    public void Add_BuildsPathFromInputTo1()
     {
-        BigInteger key = 1;
-        _gen.Add(key);
-
-        // expected sequence : 1, 4, 2, (1)
-        Assert.That(_gen.Sequence.Count, Is.EqualTo(3));
+        _gen.Add(4);
+        // Path: 4 -> 2 -> 1
+        // Tree: 1 has child 2, 2 has child 4
+        Assert.That(_gen.Root.LeftChild, Is.Not.Null);
+        Assert.That(_gen.Root.LeftChild!.Value, Is.EqualTo(new BigInteger(2)));
+        Assert.That(_gen.Root.LeftChild!.LeftChild, Is.Not.Null);
+        Assert.That(_gen.Root.LeftChild!.LeftChild!.Value, Is.EqualTo(new BigInteger(4)));
     }
 }
