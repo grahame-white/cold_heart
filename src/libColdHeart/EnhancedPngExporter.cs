@@ -175,7 +175,7 @@ public class EnhancedPngExporter
         // Color depends linearly on log(longest path)
         var pathLength = metrics.PathLengths.GetValueOrDefault(nodeValue, 0);
         var maxPathLength = metrics.LongestPath;
-        
+
         if (maxPathLength <= 1)
         {
             return SKColor.Parse("#666666"); // Default gray
@@ -215,7 +215,7 @@ public class EnhancedPngExporter
         // Similar to line color but lighter for fill
         var pathLength = metrics.PathLengths.GetValueOrDefault(nodeValue, 0);
         var maxPathLength = metrics.LongestPath;
-        
+
         if (maxPathLength <= 1)
         {
             return SKColor.Parse("#e6f3ff"); // Light blue default

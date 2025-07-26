@@ -43,7 +43,7 @@ public class AngularVisualizationTests
         Assert.That(metrics.LongestPath, Is.GreaterThan(0));
         Assert.That(metrics.PathLengths, Is.Not.Empty);
         Assert.That(metrics.TraversalCounts, Is.Not.Empty);
-        
+
         // Root should be at distance 0
         Assert.That(metrics.PathLengths[new BigInteger(1)], Is.EqualTo(0));
     }
@@ -57,7 +57,7 @@ public class AngularVisualizationTests
         Assert.That(layout.Children, Has.Count.EqualTo(1));
         var child = layout.Children[0];
         Assert.That(child.Value, Is.EqualTo(new BigInteger(2)));
-        
+
         // Child should be positioned above and to the left of root due to left turn
         Assert.That(child.Y, Is.GreaterThan(layout.Y)); // Above
         Assert.That(child.X, Is.LessThan(layout.X + layout.Width / 2.0f)); // To the left
@@ -72,7 +72,7 @@ public class AngularVisualizationTests
         // Navigate through the tree to find an odd node
         var allNodes = GetAllLayoutNodes(layout);
         var oddNode = allNodes.FirstOrDefault(n => n.Value % 2 == 1 && n.Value != 1);
-        
+
         if (oddNode != null && oddNode.Children.Count > 0)
         {
             var child = oddNode.Children[0];
@@ -100,7 +100,7 @@ public class AngularVisualizationTests
             using var stream = File.OpenRead(tempFile);
             var header = new byte[8];
             stream.Read(header, 0, 8);
-            
+
             // PNG signature: 89 50 4E 47 0D 0A 1A 0A
             Assert.That(header[0], Is.EqualTo(0x89));
             Assert.That(header[1], Is.EqualTo(0x50));
@@ -125,11 +125,11 @@ public class AngularVisualizationTests
 
         var layout = _angularCalculator.CalculateLayout(_generator.Root);
         var metrics = _angularCalculator.CalculateTreeMetrics(_generator.Root);
-        
+
         // Verify that edges exist and vary in calculated properties
         Assert.That(metrics.FurthestDistance, Is.GreaterThan(0));
         Assert.That(metrics.PathLengths.Values.Max(), Is.GreaterThan(1));
-        
+
         // Should have multiple nodes at different distances
         var distinctDistances = metrics.PathLengths.Values.Distinct().Count();
         Assert.That(distinctDistances, Is.GreaterThan(1));
@@ -147,13 +147,13 @@ public class AngularVisualizationTests
 
         // Node 1 (root) should have the highest traversal count (all paths end here)
         Assert.That(metrics.TraversalCounts[new BigInteger(1)], Is.GreaterThanOrEqualTo(1));
-        
+
         // Node 2 should have a reasonable traversal count
         Assert.That(metrics.TraversalCounts[new BigInteger(2)], Is.GreaterThanOrEqualTo(1));
-        
+
         // Higher numbers should generally have lower traversal counts than lower numbers
         Assert.That(metrics.TraversalCounts[new BigInteger(16)], Is.LessThanOrEqualTo(metrics.TraversalCounts[new BigInteger(2)]));
-        
+
         // Verify all nodes have valid traversal counts
         foreach (var count in metrics.TraversalCounts.Values)
         {
