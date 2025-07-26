@@ -44,7 +44,7 @@ public class SequenceGenerator
         BuildPathToRoot(inputNumber);
     }
 
-    public async Task SaveToFileAsync(string filePath)
+    public async Task SaveToFileAsync(String filePath)
     {
         var options = new JsonSerializerOptions
         {
@@ -57,7 +57,7 @@ public class SequenceGenerator
         await File.WriteAllTextAsync(filePath, json);
     }
 
-    public static async Task<SequenceGenerator> LoadFromFileAsync(string filePath)
+    public static async Task<SequenceGenerator> LoadFromFileAsync(String filePath)
     {
         var json = await File.ReadAllTextAsync(filePath);
         var options = new JsonSerializerOptions
@@ -91,7 +91,7 @@ public class SequenceGenerator
         // Now add nodes to tree in reverse order (from known node back to input)
         TreeNode? knownNode = existingNode;
 
-        for (int i = path.Count - 1; i >= 0; i--)
+        for (Int32 i = path.Count - 1; i >= 0; i--)
         {
             BigInteger nodeValue = path[i];
 

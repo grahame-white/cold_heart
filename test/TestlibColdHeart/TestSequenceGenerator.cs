@@ -295,7 +295,7 @@ public class Tests
         }
     }
 
-    private async Task<string> CreateTestSequenceFile()
+    private async Task<System.String> CreateTestSequenceFile()
     {
         _gen.Add(2);
         _gen.Add(4);

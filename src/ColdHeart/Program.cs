@@ -11,18 +11,18 @@ internal class Program
 {
     private const Int32 UPPER_LIMIT = 1000;
 
-    static async Task<int> Main(String[] args)
+    static async Task<Int32> Main(String[] args)
     {
         try
         {
             SequenceGenerator generator;
-            string? loadFile = null;
-            string? saveFile = null;
-            string? svgFile = null;
-            string? pngFile = null;
+            String? loadFile = null;
+            String? saveFile = null;
+            String? svgFile = null;
+            String? pngFile = null;
 
             // Parse command line arguments
-            for (int i = 0; i < args.Length; i++)
+            for (Int32 i = 0; i < args.Length; i++)
             {
                 switch (args[i])
                 {

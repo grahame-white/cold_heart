@@ -7,10 +7,10 @@ namespace libColdHeart;
 
 public class TreeLayoutCalculator
 {
-    private const float NodeSpacingY = 80.0f;
-    private const float NodeSpacingX = 20.0f;
-    private const float DefaultNodeWidth = 60.0f;
-    private const float DefaultNodeHeight = 30.0f;
+    private const Single NodeSpacingY = 80.0f;
+    private const Single NodeSpacingX = 20.0f;
+    private const Single DefaultNodeWidth = 60.0f;
+    private const Single DefaultNodeHeight = 30.0f;
 
     public LayoutNode CalculateLayout(TreeNode root)
     {
@@ -40,7 +40,7 @@ public class TreeLayoutCalculator
         return layoutNode;
     }
 
-    private void CalculatePositions(LayoutNode node, float x, float y)
+    private void CalculatePositions(LayoutNode node, Single x, Single y)
     {
         node.X = x;
         node.Y = y;
@@ -65,14 +65,14 @@ public class TreeLayoutCalculator
                 .ToList();
 
             // Calculate total width needed for all children
-            float totalChildrenWidth = CalculateSubtreeWidth(sortedChildren);
-            float startX = x - totalChildrenWidth / 2.0f;
+            Single totalChildrenWidth = CalculateSubtreeWidth(sortedChildren);
+            Single startX = x - totalChildrenWidth / 2.0f;
 
-            float currentX = startX;
+            Single currentX = startX;
             foreach (var child in sortedChildren)
             {
-                float childSubtreeWidth = CalculateSubtreeWidth(new List<LayoutNode> { child });
-                float childCenterX = currentX + childSubtreeWidth / 2.0f;
+                Single childSubtreeWidth = CalculateSubtreeWidth(new List<LayoutNode> { child });
+                Single childCenterX = currentX + childSubtreeWidth / 2.0f;
                 
                 CalculatePositions(child, childCenterX, y + NodeSpacingY);
                 currentX += childSubtreeWidth + NodeSpacingX;
@@ -80,7 +80,7 @@ public class TreeLayoutCalculator
         }
     }
 
-    private float CalculateSubtreeWidth(IList<LayoutNode> nodes)
+    private Single CalculateSubtreeWidth(IList<LayoutNode> nodes)
     {
         if (!nodes.Any())
             return 0.0f;
@@ -96,8 +96,8 @@ public class TreeLayoutCalculator
         }
 
         // For multiple nodes, calculate total width including spacing
-        float totalWidth = 0.0f;
-        for (int i = 0; i < nodes.Count; i++)
+        Single totalWidth = 0.0f;
+        for (Int32 i = 0; i < nodes.Count; i++)
         {
             totalWidth += CalculateSubtreeWidth(new List<LayoutNode> { nodes[i] });
             if (i < nodes.Count - 1)

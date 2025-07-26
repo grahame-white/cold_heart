@@ -7,22 +7,22 @@ namespace libColdHeart;
 
 public class SvgExporter
 {
-    private const int DefaultFontSize = 12;
-    private const string DefaultFontFamily = "Arial, sans-serif";
-    private const string NodeFillColor = "#e6f3ff";
-    private const string NodeStrokeColor = "#0066cc";
-    private const string TextColor = "#000000";
-    private const string LineColor = "#666666";
+    private const System.Int32 DefaultFontSize = 12;
+    private const System.String DefaultFontFamily = "Arial, sans-serif";
+    private const System.String NodeFillColor = "#e6f3ff";
+    private const System.String NodeStrokeColor = "#0066cc";
+    private const System.String TextColor = "#000000";
+    private const System.String LineColor = "#666666";
 
-    public string ExportToSvg(LayoutNode rootLayout)
+    public System.String ExportToSvg(LayoutNode rootLayout)
     {
         var bounds = CalculateBounds(rootLayout);
         var sb = new StringBuilder();
 
         // Add margins
-        float margin = 20.0f;
-        float svgWidth = bounds.Width + (2 * margin);
-        float svgHeight = bounds.Height + (2 * margin);
+        System.Single margin = 20.0f;
+        System.Single svgWidth = bounds.Width + (2 * margin);
+        System.Single svgHeight = bounds.Height + (2 * margin);
 
         // SVG header
         sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
@@ -48,10 +48,10 @@ public class SvgExporter
         foreach (var child in node.Children)
         {
             // Draw line from parent center to child center
-            float parentCenterX = node.X + (node.Width / 2.0f);
-            float parentCenterY = node.Y + (node.Height / 2.0f);
-            float childCenterX = child.X + (child.Width / 2.0f);
-            float childCenterY = child.Y + (child.Height / 2.0f);
+            System.Single parentCenterX = node.X + (node.Width / 2.0f);
+            System.Single parentCenterY = node.Y + (node.Height / 2.0f);
+            System.Single childCenterX = child.X + (child.Width / 2.0f);
+            System.Single childCenterY = child.Y + (child.Height / 2.0f);
 
             sb.AppendLine($"<line x1=\"{parentCenterX}\" y1=\"{parentCenterY}\" " +
                          $"x2=\"{childCenterX}\" y2=\"{childCenterY}\" " +
@@ -70,8 +70,8 @@ public class SvgExporter
                      $"fill=\"{NodeFillColor}\" stroke=\"{NodeStrokeColor}\" stroke-width=\"2\" rx=\"5\"/>");
 
         // Draw node text (value)
-        float textX = node.X + (node.Width / 2.0f);
-        float textY = node.Y + (node.Height / 2.0f) + (DefaultFontSize / 3.0f); // Adjust for baseline
+        System.Single textX = node.X + (node.Width / 2.0f);
+        System.Single textY = node.Y + (node.Height / 2.0f) + (DefaultFontSize / 3.0f); // Adjust for baseline
 
         sb.AppendLine($"<text x=\"{textX}\" y=\"{textY}\" " +
                      $"font-family=\"{DefaultFontFamily}\" font-size=\"{DefaultFontSize}\" " +
@@ -84,17 +84,17 @@ public class SvgExporter
         }
     }
 
-    private (float MinX, float MinY, float Width, float Height) CalculateBounds(LayoutNode rootLayout)
+    private (System.Single MinX, System.Single MinY, System.Single Width, System.Single Height) CalculateBounds(LayoutNode rootLayout)
     {
         var allNodes = GetAllNodes(rootLayout);
         
         if (!allNodes.Any())
             return (0, 0, 0, 0);
 
-        float minX = allNodes.Min(n => n.X);
-        float maxX = allNodes.Max(n => n.X + n.Width);
-        float minY = allNodes.Min(n => n.Y);
-        float maxY = allNodes.Max(n => n.Y + n.Height);
+        System.Single minX = allNodes.Min(n => n.X);
+        System.Single maxX = allNodes.Max(n => n.X + n.Width);
+        System.Single minY = allNodes.Min(n => n.Y);
+        System.Single maxY = allNodes.Max(n => n.Y + n.Height);
 
         return (minX, minY, maxX - minX, maxY - minY);
     }

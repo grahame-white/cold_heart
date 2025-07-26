@@ -8,10 +8,10 @@ namespace libColdHeart;
 
 public class PngExporter
 {
-    private const float DefaultFontSize = 12.0f;
-    private const float NodeStrokeWidth = 2.0f;
-    private const float LineStrokeWidth = 2.0f;
-    private const float CornerRadius = 5.0f;
+    private const System.Single DefaultFontSize = 12.0f;
+    private const System.Single NodeStrokeWidth = 2.0f;
+    private const System.Single LineStrokeWidth = 2.0f;
+    private const System.Single CornerRadius = 5.0f;
 
     private static readonly SKColor NodeFillColor = SKColor.Parse("#e6f3ff");
     private static readonly SKColor NodeStrokeColor = SKColor.Parse("#0066cc");
@@ -19,14 +19,14 @@ public class PngExporter
     private static readonly SKColor LineColor = SKColor.Parse("#666666");
     private static readonly SKColor BackgroundColor = SKColor.Parse("#ffffff");
 
-    public void ExportToPng(LayoutNode rootLayout, string filePath)
+    public void ExportToPng(LayoutNode rootLayout, System.String filePath)
     {
         var bounds = CalculateBounds(rootLayout);
-        
+
         // Add margins
-        float margin = 20.0f;
-        int imageWidth = (int)(bounds.Width + (2 * margin));
-        int imageHeight = (int)(bounds.Height + (2 * margin));
+        System.Single margin = 20.0f;
+        System.Int32 imageWidth = (System.Int32)(bounds.Width + (2 * margin));
+        System.Int32 imageHeight = (System.Int32)(bounds.Height + (2 * margin));
 
         using var surface = SKSurface.Create(new SKImageInfo(imageWidth, imageHeight));
         var canvas = surface.Canvas;
@@ -66,10 +66,10 @@ public class PngExporter
         foreach (var child in node.Children)
         {
             // Draw line from parent center to child center
-            float parentCenterX = node.X + (node.Width / 2.0f);
-            float parentCenterY = node.Y + (node.Height / 2.0f);
-            float childCenterX = child.X + (child.Width / 2.0f);
-            float childCenterY = child.Y + (child.Height / 2.0f);
+            System.Single parentCenterX = node.X + (node.Width / 2.0f);
+            System.Single parentCenterY = node.Y + (node.Height / 2.0f);
+            System.Single childCenterX = child.X + (child.Width / 2.0f);
+            System.Single childCenterY = child.Y + (child.Height / 2.0f);
 
             canvas.DrawLine(parentCenterX, parentCenterY, childCenterX, childCenterY, paint);
 
@@ -112,8 +112,8 @@ public class PngExporter
             Typeface = SKTypeface.FromFamilyName("Arial")
         };
 
-        float textX = node.X + (node.Width / 2.0f);
-        float textY = node.Y + (node.Height / 2.0f) + (DefaultFontSize / 3.0f); // Adjust for baseline
+        System.Single textX = node.X + (node.Width / 2.0f);
+        System.Single textY = node.Y + (node.Height / 2.0f) + (DefaultFontSize / 3.0f); // Adjust for baseline
 
         canvas.DrawText(node.Value.ToString(), textX, textY, textPaint);
 
@@ -124,17 +124,17 @@ public class PngExporter
         }
     }
 
-    private (float MinX, float MinY, float Width, float Height) CalculateBounds(LayoutNode rootLayout)
+    private (System.Single MinX, System.Single MinY, System.Single Width, System.Single Height) CalculateBounds(LayoutNode rootLayout)
     {
         var allNodes = GetAllNodes(rootLayout);
         
         if (!allNodes.Any())
             return (0, 0, 0, 0);
 
-        float minX = allNodes.Min(n => n.X);
-        float maxX = allNodes.Max(n => n.X + n.Width);
-        float minY = allNodes.Min(n => n.Y);
-        float maxY = allNodes.Max(n => n.Y + n.Height);
+        System.Single minX = allNodes.Min(n => n.X);
+        System.Single maxX = allNodes.Max(n => n.X + n.Width);
+        System.Single minY = allNodes.Min(n => n.Y);
+        System.Single maxY = allNodes.Max(n => n.Y + n.Height);
 
         return (minX, minY, maxX - minX, maxY - minY);
     }

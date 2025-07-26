@@ -21,26 +21,26 @@ public class TreeMapVisualizer
         return _layoutCalculator.CalculateLayout(root);
     }
 
-    public async Task ExportToSvgAsync(TreeNode root, string filePath)
+    public async Task ExportToSvgAsync(TreeNode root, System.String filePath)
     {
         var layout = CalculateLayout(root);
         var svg = _svgExporter.ExportToSvg(layout);
         await File.WriteAllTextAsync(filePath, svg);
     }
 
-    public void ExportToPng(TreeNode root, string filePath)
+    public void ExportToPng(TreeNode root, System.String filePath)
     {
         var layout = CalculateLayout(root);
         _pngExporter.ExportToPng(layout, filePath);
     }
 
-    public async Task ExportToSvgAsync(LayoutNode layout, string filePath)
+    public async Task ExportToSvgAsync(LayoutNode layout, System.String filePath)
     {
         var svg = _svgExporter.ExportToSvg(layout);
         await File.WriteAllTextAsync(filePath, svg);
     }
 
-    public void ExportToPng(LayoutNode layout, string filePath)
+    public void ExportToPng(LayoutNode layout, System.String filePath)
     {
         _pngExporter.ExportToPng(layout, filePath);
     }
