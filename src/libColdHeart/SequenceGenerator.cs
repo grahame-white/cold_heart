@@ -30,29 +30,33 @@ public class SequenceGenerator
         var path = new List<BigInteger>();
 
         // Build forward path using traditional Collatz sequence
-        while (!_nodeMap.ContainsKey(currentNumber))
+        TreeNode? existingNode;
+        while (!_nodeMap.TryGetValue(currentNumber, out existingNode))
         {
             path.Add(currentNumber);
             currentNumber = GetNext(currentNumber);
         }
 
         // Now add nodes to tree in reverse order (from known node back to input)
-        TreeNode? knownNode = _nodeMap[currentNumber];
+        TreeNode? knownNode = existingNode;
 
         for (int i = path.Count - 1; i >= 0; i--)
         {
             BigInteger nodeValue = path[i];
 
-            if (!_nodeMap.ContainsKey(nodeValue))
+            if (!_nodeMap.TryGetValue(nodeValue, out TreeNode? existingNodeValue))
             {
                 TreeNode newNode = new TreeNode(nodeValue);
                 _nodeMap[nodeValue] = newNode;
 
                 // Add as child to the previous node in the reverse path
                 AddChildToParent(knownNode, newNode);
+                knownNode = newNode;
             }
-
-            knownNode = _nodeMap[nodeValue];
+            else
+            {
+                knownNode = existingNodeValue;
+            }
         }
     }
 
