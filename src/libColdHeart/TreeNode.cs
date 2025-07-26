@@ -7,10 +7,10 @@ public class TreeNode
 {
     [JsonPropertyName("value")]
     public BigInteger Value { get; set; }
-    
+
     [JsonPropertyName("leftChild")]
     public TreeNode? LeftChild { get; set; }
-    
+
     [JsonPropertyName("rightChild")]
     public TreeNode? RightChild { get; set; }
 
@@ -19,7 +19,7 @@ public class TreeNode
     {
         Value = value;
     }
-    
+
     public TreeNode()
     {
         Value = BigInteger.Zero;

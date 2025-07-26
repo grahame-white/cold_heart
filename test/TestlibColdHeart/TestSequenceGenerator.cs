@@ -101,12 +101,12 @@ public class Tests
     {
         _gen.Add(2);
         _gen.Add(4);
-        
+
         var tempFile = Path.GetTempFileName();
         try
         {
             await _gen.SaveToFileAsync(tempFile);
-            
+
             Assert.That(File.Exists(tempFile), Is.True);
             var content = await File.ReadAllTextAsync(tempFile);
             Assert.That(content, Is.Not.Empty);
@@ -125,15 +125,15 @@ public class Tests
         // First create and save a sequence
         _gen.Add(2);
         _gen.Add(4);
-        
+
         var tempFile = Path.GetTempFileName();
         try
         {
             await _gen.SaveToFileAsync(tempFile);
-            
+
             // Load the sequence from file
             var loadedGen = await SequenceGenerator.LoadFromFileAsync(tempFile);
-            
+
             // Verify the loaded sequence has the same structure
             Assert.That(loadedGen.Root.Value, Is.EqualTo(new BigInteger(1)));
             Assert.That(loadedGen.Root.LeftChild, Is.Not.Null);

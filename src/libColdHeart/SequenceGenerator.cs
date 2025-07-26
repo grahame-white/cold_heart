@@ -28,7 +28,7 @@ public class SequenceGenerator
     private void BuildNodeMap(TreeNode? node)
     {
         if (node == null) return;
-        
+
         _nodeMap[node.Value] = node;
         BuildNodeMap(node.LeftChild);
         BuildNodeMap(node.RightChild);
@@ -52,11 +52,11 @@ public class SequenceGenerator
             MaxDepth = 512,
             Converters = { new BigIntegerConverter() }
         };
-        
+
         var json = JsonSerializer.Serialize(Root, options);
         await File.WriteAllTextAsync(filePath, json);
     }
-    
+
     public static async Task<SequenceGenerator> LoadFromFileAsync(string filePath)
     {
         var json = await File.ReadAllTextAsync(filePath);
@@ -65,13 +65,13 @@ public class SequenceGenerator
             MaxDepth = 512,
             Converters = { new BigIntegerConverter() }
         };
-        
+
         var root = JsonSerializer.Deserialize<TreeNode>(json, options);
         if (root == null)
         {
             throw new InvalidOperationException("Failed to deserialize sequence from file");
         }
-        
+
         return new SequenceGenerator(root);
     }
 
