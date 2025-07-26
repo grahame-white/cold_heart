@@ -1,4 +1,3 @@
-using System.Collections;
 using System.IO;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -62,11 +61,25 @@ public class Tests
         Assert.That(_gen.Root.LeftChild!.Value, Is.EqualTo(new BigInteger(2)));
     }
 
-    [TestCaseSource(nameof(PathBuildingTestCases))]
-    public void Add_CreatesExpectedNode_ForPathBuilding(BigInteger input, BigInteger expectedFirstChild)
+    [Test]
+    public void Add_CreatesExpectedNode_ForInput2()
     {
-        _gen.Add(input);
-        Assert.That(_gen.Root.LeftChild!.Value, Is.EqualTo(expectedFirstChild));
+        _gen.Add(2);
+        Assert.That(_gen.Root.LeftChild!.Value, Is.EqualTo(new BigInteger(2)));
+    }
+
+    [Test]
+    public void Add_CreatesExpectedNode_ForInput4()
+    {
+        _gen.Add(4);
+        Assert.That(_gen.Root.LeftChild!.Value, Is.EqualTo(new BigInteger(2)));
+    }
+
+    [Test]
+    public void Add_CreatesExpectedNode_ForInput3()
+    {
+        _gen.Add(3);
+        Assert.That(_gen.Root.LeftChild!.Value, Is.EqualTo(new BigInteger(2)));
     }
 
     [Test]
@@ -289,12 +302,5 @@ public class Tests
         var tempFile = Path.GetTempFileName();
         await _gen.SaveToFileAsync(tempFile);
         return tempFile;
-    }
-
-    private static IEnumerable PathBuildingTestCases()
-    {
-        yield return new TestCaseData(new BigInteger(2), new BigInteger(2));
-        yield return new TestCaseData(new BigInteger(4), new BigInteger(2));
-        yield return new TestCaseData(new BigInteger(3), new BigInteger(2));
     }
 }

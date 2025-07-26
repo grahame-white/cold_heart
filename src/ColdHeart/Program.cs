@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Numerics;
+using System.Text.Json;
 using System.Threading.Tasks;
 using libColdHeart;
 
@@ -57,14 +58,14 @@ internal class Program
             }
 
             // Load from file if specified
+            if (loadFile != null && !File.Exists(loadFile))
+            {
+                Console.WriteLine($"Error: File '{loadFile}' does not exist");
+                return 1;
+            }
+
             if (loadFile != null)
             {
-                if (!File.Exists(loadFile))
-                {
-                    Console.WriteLine($"Error: File '{loadFile}' does not exist");
-                    return 1;
-                }
-
                 Console.WriteLine($"Loading sequence from '{loadFile}'...");
                 generator = await SequenceGenerator.LoadFromFileAsync(loadFile);
                 Console.WriteLine("Sequence loaded successfully.");
@@ -91,9 +92,29 @@ internal class Program
 
             return 0;
         }
-        catch (Exception ex)
+        catch (FileNotFoundException ex)
         {
-            Console.WriteLine($"Error: {ex.Message}");
+            Console.WriteLine($"Error: File not found - {ex.Message}");
+            return 1;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Console.WriteLine($"Error: Access denied - {ex.Message}");
+            return 1;
+        }
+        catch (JsonException ex)
+        {
+            Console.WriteLine($"Error: Invalid JSON format - {ex.Message}");
+            return 1;
+        }
+        catch (InvalidOperationException ex)
+        {
+            Console.WriteLine($"Error: Operation failed - {ex.Message}");
+            return 1;
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"Error: I/O operation failed - {ex.Message}");
             return 1;
         }
     }

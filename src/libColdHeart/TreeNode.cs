@@ -6,7 +6,7 @@ namespace libColdHeart;
 public class TreeNode
 {
     [JsonPropertyName("value")]
-    public BigInteger Value { get; set; }
+    public BigInteger Value { get; init; }
 
     [JsonPropertyName("leftChild")]
     public TreeNode? LeftChild { get; set; }
