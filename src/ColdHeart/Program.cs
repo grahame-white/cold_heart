@@ -20,6 +20,7 @@ internal class Program
             String? saveFile = null;
             String? svgFile = null;
             String? pngFile = null;
+            String? angularPngFile = null;
 
             // Parse command line arguments
             for (Int32 i = 0; i < args.Length; i++)
@@ -70,6 +71,17 @@ internal class Program
                             return 1;
                         }
                         break;
+                    case "--png-angular":
+                        if (i + 1 < args.Length)
+                        {
+                            angularPngFile = args[++i];
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: --png-angular requires a filename");
+                            return 1;
+                        }
+                        break;
                     case "--help":
                     case "-h":
                         PrintUsage();
@@ -115,7 +127,7 @@ internal class Program
             }
 
             // Export visualizations if specified
-            if (svgFile != null || pngFile != null)
+            if (svgFile != null || pngFile != null || angularPngFile != null)
             {
                 var visualizer = new TreeMapVisualizer();
 
@@ -131,6 +143,13 @@ internal class Program
                     Console.WriteLine($"Exporting tree visualization to PNG '{pngFile}'...");
                     visualizer.ExportToPng(generator.Root, pngFile);
                     Console.WriteLine("PNG export completed successfully.");
+                }
+
+                if (angularPngFile != null)
+                {
+                    Console.WriteLine($"Exporting angular tree visualization to PNG '{angularPngFile}'...");
+                    visualizer.ExportToAngularPng(generator.Root, angularPngFile);
+                    Console.WriteLine("Angular PNG export completed successfully.");
                 }
             }
 
@@ -171,16 +190,18 @@ internal class Program
         Console.WriteLine("  ColdHeart [options]");
         Console.WriteLine();
         Console.WriteLine("Options:");
-        Console.WriteLine("  --load <filename>   Load a previously serialized sequence from file");
-        Console.WriteLine("  --save <filename>   Save the generated sequence to file");
-        Console.WriteLine("  --svg <filename>    Export tree visualization to SVG format");
-        Console.WriteLine("  --png <filename>    Export tree visualization to PNG format");
-        Console.WriteLine("  --help, -h          Show this help message");
+        Console.WriteLine("  --load <filename>       Load a previously serialized sequence from file");
+        Console.WriteLine("  --save <filename>       Save the generated sequence to file");
+        Console.WriteLine("  --svg <filename>        Export tree visualization to SVG format");
+        Console.WriteLine("  --png <filename>        Export tree visualization to PNG format (traditional layout)");
+        Console.WriteLine("  --png-angular <filename> Export tree visualization to PNG format (angular layout)");
+        Console.WriteLine("  --help, -h              Show this help message");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  ColdHeart --save sequence.json");
         Console.WriteLine("  ColdHeart --load sequence.json --svg tree.svg");
         Console.WriteLine("  ColdHeart --svg tree.svg --png tree.png");
+        Console.WriteLine("  ColdHeart --png-angular angular_tree.png");
         Console.WriteLine("  ColdHeart --load old.json --save new.json --svg tree.svg");
     }
 }
