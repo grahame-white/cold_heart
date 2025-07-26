@@ -47,7 +47,7 @@ public class TreeMapVisualizer
     public void ExportToAngularPng(TreeNode root, String filePath)
     {
         var layout = CalculateAngularLayout(root);
-        var metrics = new AngularTreeLayoutCalculator().CalculateTreeMetrics(root);
+        var metrics = _angularLayoutCalculator.CalculateTreeMetrics(root);
         _enhancedPngExporter.ExportToPng(layout, metrics, filePath);
     }
 

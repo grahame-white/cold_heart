@@ -51,7 +51,7 @@ public class AngularTreeLayoutCalculator
         if (node == null) return;
 
         // Update path length (distance from root)
-        if (!pathLengths.ContainsKey(node.Value) || pathLengths[node.Value] > currentDepth)
+        if (!pathLengths.TryGetValue(node.Value, out var existingDepth) || existingDepth > currentDepth)
         {
             pathLengths[node.Value] = currentDepth;
         }
