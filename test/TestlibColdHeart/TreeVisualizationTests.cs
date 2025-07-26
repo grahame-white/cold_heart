@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -188,7 +189,7 @@ public class TreeVisualizationTests
             _generator.Add(i);
         }
 
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
         var layout = _visualizer.CalculateLayout(_generator.Root);
         stopwatch.Stop();
 

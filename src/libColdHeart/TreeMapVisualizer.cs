@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -21,26 +22,26 @@ public class TreeMapVisualizer
         return _layoutCalculator.CalculateLayout(root);
     }
 
-    public async Task ExportToSvgAsync(TreeNode root, System.String filePath)
+    public async Task ExportToSvgAsync(TreeNode root, String filePath)
     {
         var layout = CalculateLayout(root);
         var svg = _svgExporter.ExportToSvg(layout);
         await File.WriteAllTextAsync(filePath, svg);
     }
 
-    public void ExportToPng(TreeNode root, System.String filePath)
+    public void ExportToPng(TreeNode root, String filePath)
     {
         var layout = CalculateLayout(root);
         _pngExporter.ExportToPng(layout, filePath);
     }
 
-    public async Task ExportToSvgAsync(LayoutNode layout, System.String filePath)
+    public async Task ExportToSvgAsync(LayoutNode layout, String filePath)
     {
         var svg = _svgExporter.ExportToSvg(layout);
         await File.WriteAllTextAsync(filePath, svg);
     }
 
-    public void ExportToPng(LayoutNode layout, System.String filePath)
+    public void ExportToPng(LayoutNode layout, String filePath)
     {
         _pngExporter.ExportToPng(layout, filePath);
     }
