@@ -16,14 +16,15 @@ public class SequenceGenerator
 
     public void Add(BigInteger inputNumber)
     {
-        if (Sequence.ContainsKey(inputNumber)) return;
+        BigInteger currentNumber = inputNumber;
 
-        BigInteger nextValue = GetNext(inputNumber);
-        Console.WriteLine($"{inputNumber} -> {nextValue}");
-        Sequence[inputNumber] = nextValue;
-
-        // Recursively add the next value
-        Add(nextValue); 
+        while (!Sequence.ContainsKey(currentNumber))
+        {
+            BigInteger nextValue = GetNext(currentNumber);
+            Console.WriteLine($"{currentNumber} -> {nextValue}");
+            Sequence[currentNumber] = nextValue;
+            currentNumber = nextValue;
+        }
     }
 
     private static BigInteger GetNext(BigInteger inputNumber)
