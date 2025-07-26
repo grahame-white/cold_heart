@@ -57,9 +57,9 @@ check_licenses() {
     # Check .NET licenses
     if command_exists nuget-license; then
         echo "Checking .NET package licenses..."
-        if nuget-license -i Logica.sln -o Json -fo licenses.json >/dev/null 2>&1; then
+        if nuget-license -i ColdHeart.sln -o Json -fo licenses.json >/dev/null 2>&1; then
             echo "✅ .NET license information generated"
-            nuget-license -i Logica.sln || echo "License display completed"
+            nuget-license -i ColdHeart.sln || echo "License display completed"
         else
             echo "⚠️  License scanning tool failed, creating basic report..."
             echo '{"licenses": [], "note": "License tool failed"}' >licenses.json
