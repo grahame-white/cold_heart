@@ -20,17 +20,28 @@ public class Tests
     }
 
     [Test]
-    public void Root_Initially_HasNoChildren()
+    public void Root_Initially_HasNoLeftChild()
     {
         Assert.That(_gen.Root.LeftChild, Is.Null);
+    }
+
+    [Test]
+    public void Root_Initially_HasNoRightChild()
+    {
         Assert.That(_gen.Root.RightChild, Is.Null);
     }
 
     [Test]
-    public void Add_DoesNothing_WhenInputIs1()
+    public void Add_DoesNotAddLeftChild_WhenInputIs1()
     {
         _gen.Add(1);
         Assert.That(_gen.Root.LeftChild, Is.Null);
+    }
+
+    [Test]
+    public void Add_DoesNotAddRightChild_WhenInputIs1()
+    {
+        _gen.Add(1);
         Assert.That(_gen.Root.RightChild, Is.Null);
     }
 
@@ -65,7 +76,7 @@ public class Tests
     }
 
     [Test]
-    public void Add_DoesNotDuplicateExistingNodes()
+    public void Add_DoesNotDuplicateExistingNodes_SetsUpCorrectParentChild()
     {
         _gen.Add(2);
         _gen.Add(4);
@@ -73,8 +84,32 @@ public class Tests
         // Both 2 and 4 should be in tree, but no duplicates
         // 4 -> 2 -> 1, so 2 should already exist when adding 4
         Assert.That(_gen.Root.LeftChild, Is.Not.Null);
+    }
+
+    [Test]
+    public void Add_DoesNotDuplicateExistingNodes_Node2HasCorrectValue()
+    {
+        _gen.Add(2);
+        _gen.Add(4);
+
         Assert.That(_gen.Root.LeftChild!.Value, Is.EqualTo(new BigInteger(2)));
+    }
+
+    [Test]
+    public void Add_DoesNotDuplicateExistingNodes_Node4IsChildOfNode2()
+    {
+        _gen.Add(2);
+        _gen.Add(4);
+
         Assert.That(_gen.Root.LeftChild!.LeftChild, Is.Not.Null);
+    }
+
+    [Test]
+    public void Add_DoesNotDuplicateExistingNodes_Node4HasCorrectValue()
+    {
+        _gen.Add(2);
+        _gen.Add(4);
+
         Assert.That(_gen.Root.LeftChild!.LeftChild!.Value, Is.EqualTo(new BigInteger(4)));
     }
 }

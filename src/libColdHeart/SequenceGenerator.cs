@@ -1,20 +1,7 @@
-using System;
 using System.Collections.Generic;
 using System.Numerics;
 
 namespace libColdHeart;
-
-public class TreeNode
-{
-    public BigInteger Value { get; }
-    public TreeNode? LeftChild { get; set; }
-    public TreeNode? RightChild { get; set; }
-
-    public TreeNode(BigInteger value)
-    {
-        Value = value;
-    }
-}
 
 public class SequenceGenerator
 {
@@ -63,7 +50,6 @@ public class SequenceGenerator
 
                 // Add as child to the previous node in the reverse path
                 AddChildToParent(knownNode, newNode);
-                Console.WriteLine($"{knownNode.Value} -> {newNode.Value}");
             }
 
             knownNode = _nodeMap[nodeValue];
