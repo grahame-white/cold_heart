@@ -1,5 +1,7 @@
 using System;
+using System.IO;
 using System.Numerics;
+using System.Threading.Tasks;
 using libColdHeart;
 
 namespace ColdHeart;
@@ -8,12 +10,109 @@ internal class Program
 {
     private const Int32 UPPER_LIMIT = 1000;
 
-    static void Main(String[] _)
+    static async Task<int> Main(String[] args)
     {
-        var generator = new SequenceGenerator();
-        for (BigInteger i = 1; i < UPPER_LIMIT; i++)
+        try
         {
-            generator.Add(i);
+            SequenceGenerator generator;
+            string? loadFile = null;
+            string? saveFile = null;
+
+            // Parse command line arguments
+            for (int i = 0; i < args.Length; i++)
+            {
+                switch (args[i])
+                {
+                    case "--load":
+                        if (i + 1 < args.Length)
+                        {
+                            loadFile = args[++i];
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: --load requires a filename");
+                            return 1;
+                        }
+                        break;
+                    case "--save":
+                        if (i + 1 < args.Length)
+                        {
+                            saveFile = args[++i];
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: --save requires a filename");
+                            return 1;
+                        }
+                        break;
+                    case "--help":
+                    case "-h":
+                        PrintUsage();
+                        return 0;
+                    default:
+                        Console.WriteLine($"Error: Unknown argument '{args[i]}'");
+                        PrintUsage();
+                        return 1;
+                }
+            }
+
+            // Load from file if specified
+            if (loadFile != null)
+            {
+                if (!File.Exists(loadFile))
+                {
+                    Console.WriteLine($"Error: File '{loadFile}' does not exist");
+                    return 1;
+                }
+
+                Console.WriteLine($"Loading sequence from '{loadFile}'...");
+                generator = await SequenceGenerator.LoadFromFileAsync(loadFile);
+                Console.WriteLine("Sequence loaded successfully.");
+            }
+            else
+            {
+                // Generate sequence
+                Console.WriteLine($"Generating sequence for numbers 1 to {UPPER_LIMIT - 1}...");
+                generator = new SequenceGenerator();
+                for (BigInteger i = 1; i < UPPER_LIMIT; i++)
+                {
+                    generator.Add(i);
+                }
+                Console.WriteLine("Sequence generation completed.");
+            }
+
+            // Save to file if specified
+            if (saveFile != null)
+            {
+                Console.WriteLine($"Saving sequence to '{saveFile}'...");
+                await generator.SaveToFileAsync(saveFile);
+                Console.WriteLine("Sequence saved successfully.");
+            }
+
+            return 0;
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            return 1;
+        }
+    }
+
+    private static void PrintUsage()
+    {
+        Console.WriteLine("ColdHeart - Collatz sequence generator and serializer");
+        Console.WriteLine();
+        Console.WriteLine("Usage:");
+        Console.WriteLine("  ColdHeart [options]");
+        Console.WriteLine();
+        Console.WriteLine("Options:");
+        Console.WriteLine("  --load <filename>   Load a previously serialized sequence from file");
+        Console.WriteLine("  --save <filename>   Save the generated sequence to file");
+        Console.WriteLine("  --help, -h          Show this help message");
+        Console.WriteLine();
+        Console.WriteLine("Examples:");
+        Console.WriteLine("  ColdHeart --save sequence.json");
+        Console.WriteLine("  ColdHeart --load sequence.json");
+        Console.WriteLine("  ColdHeart --load old.json --save new.json");
     }
 }

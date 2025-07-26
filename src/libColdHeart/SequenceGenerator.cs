@@ -1,18 +1,37 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Numerics;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace libColdHeart;
 
 public class SequenceGenerator
 {
-    public TreeNode Root { get; }
+    public TreeNode Root { get; private set; }
     private readonly Dictionary<BigInteger, TreeNode> _nodeMap;
 
     public SequenceGenerator()
     {
         Root = new TreeNode(1);
         _nodeMap = new Dictionary<BigInteger, TreeNode> { { 1, Root } };
+    }
+
+    public SequenceGenerator(TreeNode root)
+    {
+        Root = root;
+        _nodeMap = new Dictionary<BigInteger, TreeNode>();
+        BuildNodeMap(Root);
+    }
+
+    private void BuildNodeMap(TreeNode? node)
+    {
+        if (node == null) return;
+        
+        _nodeMap[node.Value] = node;
+        BuildNodeMap(node.LeftChild);
+        BuildNodeMap(node.RightChild);
     }
 
     public void Add(BigInteger inputNumber)
@@ -23,6 +42,37 @@ public class SequenceGenerator
         }
 
         BuildPathToRoot(inputNumber);
+    }
+
+    public async Task SaveToFileAsync(string filePath)
+    {
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            MaxDepth = 512,
+            Converters = { new BigIntegerConverter() }
+        };
+        
+        var json = JsonSerializer.Serialize(Root, options);
+        await File.WriteAllTextAsync(filePath, json);
+    }
+    
+    public static async Task<SequenceGenerator> LoadFromFileAsync(string filePath)
+    {
+        var json = await File.ReadAllTextAsync(filePath);
+        var options = new JsonSerializerOptions
+        {
+            MaxDepth = 512,
+            Converters = { new BigIntegerConverter() }
+        };
+        
+        var root = JsonSerializer.Deserialize<TreeNode>(json, options);
+        if (root == null)
+        {
+            throw new InvalidOperationException("Failed to deserialize sequence from file");
+        }
+        
+        return new SequenceGenerator(root);
     }
 
     private void BuildPathToRoot(BigInteger number)
