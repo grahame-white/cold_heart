@@ -6,7 +6,7 @@ namespace ColdHeart;
 
 internal class Program
 {
-    private const Int32 UPPER_LIMIT = 1000000;
+    private const Int32 UPPER_LIMIT = 1000;
 
     static void Main(String[] _)
     {
