@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 
@@ -70,7 +71,10 @@ public class SequenceGenerator
         {
             parent.RightChild = child;
         }
-        // If both children exist, we don't add (should not happen in normal Collatz)
+        else
+        {
+            throw new InvalidOperationException($"Cannot add child {child.Value} to parent {parent.Value}: both child positions are already occupied by {parent.LeftChild.Value} and {parent.RightChild.Value}. This indicates a logic error in the tree building algorithm.");
+        }
     }
 
     private static BigInteger GetNext(BigInteger inputNumber)
