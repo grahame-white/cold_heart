@@ -25,17 +25,55 @@ public class PngExporter
 
         // Add margins
         System.Single margin = 20.0f;
-        System.Int32 imageWidth = (System.Int32)(bounds.Width + (2 * margin));
-        System.Int32 imageHeight = (System.Int32)(bounds.Height + (2 * margin));
+        System.Single originalWidth = bounds.Width + (2 * margin);
+        System.Single originalHeight = bounds.Height + (2 * margin);
+
+        // Check for reasonable image size limits and apply scaling if necessary
+        const System.Int32 MAX_DIMENSION = 32767; // Maximum dimension for most image formats
+        const System.Int64 MAX_PIXELS = 100_000_000; // 100 million pixels max
+
+        System.Single scale = 1.0f;
+
+        // Calculate scale to fit within dimension limits
+        if (originalWidth > MAX_DIMENSION)
+        {
+            scale = System.Math.Min(scale, MAX_DIMENSION / originalWidth);
+        }
+        if (originalHeight > MAX_DIMENSION)
+        {
+            scale = System.Math.Min(scale, MAX_DIMENSION / originalHeight);
+        }
+
+        // Calculate scale to fit within pixel count limits
+        System.Int64 totalPixels = (System.Int64)(originalWidth * originalHeight);
+        if (totalPixels > MAX_PIXELS)
+        {
+            System.Single pixelScale = System.MathF.Sqrt((System.Single)MAX_PIXELS / totalPixels);
+            scale = System.Math.Min(scale, pixelScale);
+        }
+
+        System.Int32 imageWidth = (System.Int32)(originalWidth * scale);
+        System.Int32 imageHeight = (System.Int32)(originalHeight * scale);
+
+        if (imageWidth <= 0 || imageHeight <= 0)
+        {
+            throw new System.InvalidOperationException($"Invalid image dimensions after scaling: {imageWidth}x{imageHeight}");
+        }
 
         using var surface = SKSurface.Create(new SKImageInfo(imageWidth, imageHeight));
+        if (surface == null)
+        {
+            throw new System.InvalidOperationException($"Failed to create surface with dimensions {imageWidth}x{imageHeight}. This may be due to insufficient memory or graphics limitations.");
+        }
+
         var canvas = surface.Canvas;
 
         // Clear background
         canvas.Clear(BackgroundColor);
 
-        // Save and translate canvas to account for margin and bounds
+        // Save and apply scaling and translation
         canvas.Save();
+        canvas.Scale(scale);
         canvas.Translate(margin - bounds.MinX, margin - bounds.MinY);
 
         // Draw connections first (so they appear behind nodes)
