@@ -6,24 +6,74 @@ namespace libColdHeart;
 
 public class SequenceGenerator
 {
-    // Key, next value
-    public Dictionary<BigInteger, BigInteger> Sequence { get; }
+    public TreeNode Root { get; }
+    private readonly Dictionary<BigInteger, TreeNode> _nodeMap;
 
     public SequenceGenerator()
     {
-        Sequence = [];
+        Root = new TreeNode(1);
+        _nodeMap = new Dictionary<BigInteger, TreeNode> { { 1, Root } };
     }
 
     public void Add(BigInteger inputNumber)
     {
-        BigInteger currentNumber = inputNumber;
-
-        while (!Sequence.ContainsKey(currentNumber))
+        if (inputNumber == 1)
         {
-            BigInteger nextValue = GetNext(currentNumber);
-            Console.WriteLine($"{currentNumber} -> {nextValue}");
-            Sequence[currentNumber] = nextValue;
-            currentNumber = nextValue;
+            return; // Root already exists
+        }
+
+        BuildPathToRoot(inputNumber);
+    }
+
+    private void BuildPathToRoot(BigInteger number)
+    {
+        BigInteger currentNumber = number;
+        var path = new List<BigInteger>();
+
+        // Build forward path using traditional Collatz sequence
+        TreeNode? existingNode;
+        while (!_nodeMap.TryGetValue(currentNumber, out existingNode))
+        {
+            path.Add(currentNumber);
+            currentNumber = GetNext(currentNumber);
+        }
+
+        // Now add nodes to tree in reverse order (from known node back to input)
+        TreeNode? knownNode = existingNode;
+
+        for (int i = path.Count - 1; i >= 0; i--)
+        {
+            BigInteger nodeValue = path[i];
+
+            if (!_nodeMap.TryGetValue(nodeValue, out TreeNode? existingNodeValue))
+            {
+                TreeNode newNode = new TreeNode(nodeValue);
+                _nodeMap[nodeValue] = newNode;
+
+                // Add as child to the previous node in the reverse path
+                AddChildToParent(knownNode, newNode);
+                knownNode = newNode;
+            }
+            else
+            {
+                knownNode = existingNodeValue;
+            }
+        }
+    }
+
+    private static void AddChildToParent(TreeNode parent, TreeNode child)
+    {
+        if (parent.LeftChild == null)
+        {
+            parent.LeftChild = child;
+        }
+        else if (parent.RightChild == null)
+        {
+            parent.RightChild = child;
+        }
+        else
+        {
+            throw new InvalidOperationException($"Cannot add child {child.Value} to parent {parent.Value}: both child positions are already occupied by {parent.LeftChild.Value} and {parent.RightChild.Value}. This indicates a logic error in the tree building algorithm.");
         }
     }
 
