@@ -76,40 +76,21 @@ public class Tests
     }
 
     [Test]
-    public void Add_DoesNotDuplicateExistingNodes_SetsUpCorrectParentChild()
+    public void Add_DoesNotDuplicateExistingNodes_CreatesCorrectTreeStructure()
     {
         _gen.Add(2);
         _gen.Add(4);
 
-        // Both 2 and 4 should be in tree, but no duplicates
-        // 4 -> 2 -> 1, so 2 should already exist when adding 4
+        // Verify complete tree structure: 1 -> 2 -> 4
+        // When adding 4, it should create: 4 -> 2 -> 1
+        // But since 2 already exists, no duplication should occur
+
+        // Verify node 2 is properly connected as left child of root (1)
         Assert.That(_gen.Root.LeftChild, Is.Not.Null);
-    }
+        Assert.That(_gen.Root.LeftChild.Value, Is.EqualTo(new BigInteger(2)));
 
-    [Test]
-    public void Add_DoesNotDuplicateExistingNodes_Node2HasCorrectValue()
-    {
-        _gen.Add(2);
-        _gen.Add(4);
-
-        Assert.That(_gen.Root.LeftChild!.Value, Is.EqualTo(new BigInteger(2)));
-    }
-
-    [Test]
-    public void Add_DoesNotDuplicateExistingNodes_Node4IsChildOfNode2()
-    {
-        _gen.Add(2);
-        _gen.Add(4);
-
-        Assert.That(_gen.Root.LeftChild!.LeftChild, Is.Not.Null);
-    }
-
-    [Test]
-    public void Add_DoesNotDuplicateExistingNodes_Node4HasCorrectValue()
-    {
-        _gen.Add(2);
-        _gen.Add(4);
-
-        Assert.That(_gen.Root.LeftChild!.LeftChild!.Value, Is.EqualTo(new BigInteger(4)));
+        // Verify node 4 is properly connected as left child of node 2
+        Assert.That(_gen.Root.LeftChild.LeftChild, Is.Not.Null);
+        Assert.That(_gen.Root.LeftChild.LeftChild.Value, Is.EqualTo(new BigInteger(4)));
     }
 }
