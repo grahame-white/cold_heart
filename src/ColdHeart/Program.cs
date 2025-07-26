@@ -118,7 +118,7 @@ internal class Program
             if (svgFile != null || pngFile != null)
             {
                 var visualizer = new TreeMapVisualizer();
-                
+
                 if (svgFile != null)
                 {
                     Console.WriteLine($"Exporting tree visualization to SVG '{svgFile}'...");

@@ -52,10 +52,10 @@ public class TreeVisualizationTests
         Assert.That(layout.Children, Has.Count.EqualTo(1));
         var child2 = layout.Children[0];  // Node 2
         Assert.That(child2.Value, Is.EqualTo(new BigInteger(2)));
-        
+
         // Node 2 should have children (4 and possibly 10 from sequence 3)
         Assert.That(child2.Children.Count, Is.GreaterThanOrEqualTo(1));
-        
+
         // All children should be positioned above their parent
         foreach (var child in child2.Children)
         {
@@ -71,15 +71,15 @@ public class TreeVisualizationTests
 
         var layout = _visualizer.CalculateLayout(_generator.Root);
         var node2 = layout.Children[0];
-        
+
         if (node2.Children.Count >= 2)
         {
             var firstChild = node2.Children[0];
             var secondChild = node2.Children[1];
-            
+
             // First child should have higher value than second (ordered by descending value)
             Assert.That(firstChild.Value, Is.GreaterThan(secondChild.Value));
-            
+
             // First child (higher value) should be positioned to the left of second child (lower value)
             Assert.That(firstChild.X, Is.LessThan(secondChild.X));
         }
@@ -100,7 +100,7 @@ public class TreeVisualizationTests
         try
         {
             await _visualizer.ExportToSvgAsync(_generator.Root, tempFile);
-            
+
             Assert.That(File.Exists(tempFile), Is.True);
             var content = await File.ReadAllTextAsync(tempFile);
             Assert.That(content, Does.Contain("<?xml"));
@@ -124,7 +124,7 @@ public class TreeVisualizationTests
         try
         {
             _visualizer.ExportToPng(_generator.Root, tempFile);
-            
+
             Assert.That(File.Exists(tempFile), Is.True);
             var fileInfo = new FileInfo(tempFile);
             Assert.That(fileInfo.Length, Is.GreaterThan(0));
@@ -147,7 +147,7 @@ public class TreeVisualizationTests
         {
             await _visualizer.ExportToSvgAsync(_generator.Root, tempFile);
             var content = await File.ReadAllTextAsync(tempFile);
-            
+
             Assert.That(content, Does.Contain(">1<"));
             Assert.That(content, Does.Contain(">2<"));
             Assert.That(content, Does.Contain(">4<"));
@@ -158,7 +158,7 @@ public class TreeVisualizationTests
                 File.Delete(tempFile);
         }
     }
-    
+
     [Test]
     public void CalculateLayout_WithComplexTree_HandlesAllNodes()
     {
@@ -170,10 +170,10 @@ public class TreeVisualizationTests
 
         var layout = _visualizer.CalculateLayout(_generator.Root);
         var allNodes = GetAllLayoutNodes(layout);
-        
+
         // Should have at least root + generated nodes
         Assert.That(allNodes.Count, Is.GreaterThanOrEqualTo(10));
-        
+
         // Root should be at origin
         Assert.That(layout.X, Is.EqualTo(0.0f));
         Assert.That(layout.Y, Is.EqualTo(0.0f));
@@ -191,10 +191,10 @@ public class TreeVisualizationTests
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var layout = _visualizer.CalculateLayout(_generator.Root);
         stopwatch.Stop();
-        
+
         // Should complete within reasonable time (less than 1 second)
         Assert.That(stopwatch.ElapsedMilliseconds, Is.LessThan(1000));
-        
+
         var allNodes = GetAllLayoutNodes(layout);
         Assert.That(allNodes.Count, Is.GreaterThan(100));
     }

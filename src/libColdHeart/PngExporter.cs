@@ -97,7 +97,7 @@ public class PngExporter
         };
 
         var rect = new SKRect(node.X, node.Y, node.X + node.Width, node.Y + node.Height);
-        var roundRect = new SKRoundRect(rect, CornerRadius, CornerRadius);
+        using var roundRect = new SKRoundRect(rect, CornerRadius, CornerRadius);
 
         canvas.DrawRoundRect(roundRect, fillPaint);
         canvas.DrawRoundRect(roundRect, strokePaint);
@@ -127,7 +127,7 @@ public class PngExporter
     private (System.Single MinX, System.Single MinY, System.Single Width, System.Single Height) CalculateBounds(LayoutNode rootLayout)
     {
         var allNodes = GetAllNodes(rootLayout);
-        
+
         if (!allNodes.Any())
             return (0, 0, 0, 0);
 
@@ -142,12 +142,12 @@ public class PngExporter
     private List<LayoutNode> GetAllNodes(LayoutNode node)
     {
         var nodes = new List<LayoutNode> { node };
-        
+
         foreach (var child in node.Children)
         {
             nodes.AddRange(GetAllNodes(child));
         }
-        
+
         return nodes;
     }
 }

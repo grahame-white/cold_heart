@@ -73,7 +73,7 @@ public class TreeLayoutCalculator
             {
                 Single childSubtreeWidth = CalculateSubtreeWidth(new List<LayoutNode> { child });
                 Single childCenterX = currentX + childSubtreeWidth / 2.0f;
-                
+
                 CalculatePositions(child, childCenterX, y + NodeSpacingY);
                 currentX += childSubtreeWidth + NodeSpacingX;
             }
@@ -90,7 +90,7 @@ public class TreeLayoutCalculator
             var node = nodes[0];
             if (node.Children.Count == 0)
                 return node.Width;
-            
+
             // For nodes with children, the subtree width is the width of all child subtrees
             return Math.Max(node.Width, CalculateSubtreeWidth(node.Children));
         }
@@ -103,7 +103,7 @@ public class TreeLayoutCalculator
             if (i < nodes.Count - 1)
                 totalWidth += NodeSpacingX;
         }
-        
+
         return totalWidth;
     }
 }

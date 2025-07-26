@@ -27,7 +27,7 @@ public class SvgExporter
         // SVG header
         sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
         sb.AppendLine($"<svg width=\"{svgWidth}\" height=\"{svgHeight}\" xmlns=\"http://www.w3.org/2000/svg\">");
-        
+
         // Transform to move origin and account for margin
         sb.AppendLine($"<g transform=\"translate({margin - bounds.MinX}, {margin - bounds.MinY})\">");
 
@@ -54,8 +54,8 @@ public class SvgExporter
             System.Single childCenterY = child.Y + (child.Height / 2.0f);
 
             sb.AppendLine($"<line x1=\"{parentCenterX}\" y1=\"{parentCenterY}\" " +
-                         $"x2=\"{childCenterX}\" y2=\"{childCenterY}\" " +
-                         $"stroke=\"{LineColor}\" stroke-width=\"2\"/>");
+                $"x2=\"{childCenterX}\" y2=\"{childCenterY}\" " +
+                $"stroke=\"{LineColor}\" stroke-width=\"2\"/>");
 
             // Recursively draw connections for children
             DrawConnections(sb, child);
@@ -66,16 +66,16 @@ public class SvgExporter
     {
         // Draw node rectangle
         sb.AppendLine($"<rect x=\"{node.X}\" y=\"{node.Y}\" " +
-                     $"width=\"{node.Width}\" height=\"{node.Height}\" " +
-                     $"fill=\"{NodeFillColor}\" stroke=\"{NodeStrokeColor}\" stroke-width=\"2\" rx=\"5\"/>");
+            $"width=\"{node.Width}\" height=\"{node.Height}\" " +
+            $"fill=\"{NodeFillColor}\" stroke=\"{NodeStrokeColor}\" stroke-width=\"2\" rx=\"5\"/>");
 
         // Draw node text (value)
         System.Single textX = node.X + (node.Width / 2.0f);
         System.Single textY = node.Y + (node.Height / 2.0f) + (DefaultFontSize / 3.0f); // Adjust for baseline
 
         sb.AppendLine($"<text x=\"{textX}\" y=\"{textY}\" " +
-                     $"font-family=\"{DefaultFontFamily}\" font-size=\"{DefaultFontSize}\" " +
-                     $"fill=\"{TextColor}\" text-anchor=\"middle\">{node.Value}</text>");
+            $"font-family=\"{DefaultFontFamily}\" font-size=\"{DefaultFontSize}\" " +
+            $"fill=\"{TextColor}\" text-anchor=\"middle\">{node.Value}</text>");
 
         // Recursively draw child nodes
         foreach (var child in node.Children)
@@ -87,7 +87,7 @@ public class SvgExporter
     private (System.Single MinX, System.Single MinY, System.Single Width, System.Single Height) CalculateBounds(LayoutNode rootLayout)
     {
         var allNodes = GetAllNodes(rootLayout);
-        
+
         if (!allNodes.Any())
             return (0, 0, 0, 0);
 
@@ -102,12 +102,12 @@ public class SvgExporter
     private List<LayoutNode> GetAllNodes(LayoutNode node)
     {
         var nodes = new List<LayoutNode> { node };
-        
+
         foreach (var child in node.Children)
         {
             nodes.AddRange(GetAllNodes(child));
         }
-        
+
         return nodes;
     }
 }
