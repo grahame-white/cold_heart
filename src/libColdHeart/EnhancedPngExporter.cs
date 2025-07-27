@@ -12,7 +12,8 @@ namespace libColdHeart;
 public enum NodeStyle
 {
     Circle,
-    Rectangle
+    Rectangle,
+    None
 }
 
 public class EnhancedPngExporter
@@ -126,7 +127,7 @@ public class EnhancedPngExporter
 
         // Draw nodes
         progressCallback?.Invoke("Drawing nodes...");
-        DrawEnhancedNodes(canvas, filteredLayout, filteredMetrics, nodeStyle, progressCallback);
+        DrawEnhancedNodes(canvas, filteredLayout, filteredMetrics, config, nodeStyle, progressCallback);
 
         canvas.Restore();
 
@@ -190,7 +191,9 @@ public class EnhancedPngExporter
         using var paint = new SKPaint
         {
             Style = SKPaintStyle.Stroke,
-            IsAntialias = true
+            IsAntialias = true,
+            StrokeJoin = SKStrokeJoin.Round,
+            StrokeCap = SKStrokeCap.Round
         };
 
         if (config.DrawingOrder == DrawingOrder.LeastToMostTraversed)
@@ -234,7 +237,9 @@ public class EnhancedPngExporter
         using var paint = new SKPaint
         {
             Style = SKPaintStyle.Stroke,
-            IsAntialias = true
+            IsAntialias = true,
+            StrokeJoin = SKStrokeJoin.Round,
+            StrokeCap = SKStrokeCap.Round
         };
 
         DrawConnectionsWithProgressRecursive(canvas, node, paint, progressCallback, totalNodes, ref processedNodes);
@@ -261,7 +266,9 @@ public class EnhancedPngExporter
         using var paint = new SKPaint
         {
             Style = SKPaintStyle.Stroke,
-            IsAntialias = true
+            IsAntialias = true,
+            StrokeJoin = SKStrokeJoin.Round,
+            StrokeCap = SKStrokeCap.Round
         };
 
         foreach (var group in groupedConnections)
@@ -368,15 +375,153 @@ public class EnhancedPngExporter
         }
     }
 
-    private void DrawEnhancedNodes(SKCanvas canvas, LayoutNode node, TreeMetrics metrics, NodeStyle nodeStyle, Action<String>? progressCallback = null)
+    private void DrawEnhancedNodes(SKCanvas canvas, LayoutNode node, TreeMetrics metrics, AngularVisualizationConfig config, NodeStyle nodeStyle, Action<String>? progressCallback = null)
     {
-        if (nodeStyle == NodeStyle.Circle)
+        // Skip drawing nodes if style is None
+        if (nodeStyle == NodeStyle.None)
+        {
+            return;
+        }
+
+        if (config.DrawingOrder == DrawingOrder.LeastToMostTraversed)
+        {
+            DrawNodesOrderedByTraversal(canvas, node, metrics, nodeStyle, progressCallback);
+        }
+        else if (nodeStyle == NodeStyle.Circle)
         {
             DrawCircleNodesOptimized(canvas, node, progressCallback);
         }
         else
         {
             DrawRectangleNodesOptimized(canvas, node, progressCallback);
+        }
+    }
+
+    private void DrawNodesOrderedByTraversal(SKCanvas canvas, LayoutNode rootNode, TreeMetrics metrics, NodeStyle nodeStyle, Action<String>? progressCallback = null)
+    {
+        // Collect all nodes first
+        var allNodes = new List<LayoutNode>();
+        CollectAllNodes(rootNode, allNodes);
+
+        // Sort nodes by traversal frequency (least to most traversed)
+        var sortedNodes = allNodes
+            .OrderBy(n => metrics.TraversalCounts.GetValueOrDefault(n.Value, 0))
+            .ToList();
+
+        // Draw nodes in order based on their style
+        if (nodeStyle == NodeStyle.Circle)
+        {
+            DrawCircleNodesFromList(canvas, sortedNodes, progressCallback);
+        }
+        else
+        {
+            DrawRectangleNodesFromList(canvas, sortedNodes, progressCallback);
+        }
+    }
+
+    private void CollectAllNodes(LayoutNode node, List<LayoutNode> nodesList)
+    {
+        nodesList.Add(node);
+        foreach (var child in node.Children)
+        {
+            CollectAllNodes(child, nodesList);
+        }
+    }
+
+    private void DrawCircleNodesFromList(SKCanvas canvas, List<LayoutNode> nodes, Action<String>? progressCallback = null)
+    {
+        using var fillPaint = new SKPaint
+        {
+            Style = SKPaintStyle.Fill,
+            IsAntialias = true
+        };
+
+        using var borderPaint = new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = 2.0f,
+            IsAntialias = true
+        };
+
+        var totalNodes = nodes.Count;
+        for (var i = 0; i < totalNodes; i++)
+        {
+            var node = nodes[i];
+            var nodeColor = _nodeColorCache[node.Value];
+            var nodeRadius = _nodeRadiusCache[node.Value];
+
+            fillPaint.Color = nodeColor.WithAlpha(TRANSPARENT_FILL_ALPHA);
+            borderPaint.Color = nodeColor.WithAlpha(TRANSPARENT_BORDER_ALPHA);
+
+            var centerX = node.X + node.Width / 2;
+            var centerY = node.Y + node.Height / 2;
+
+            canvas.DrawCircle(centerX, centerY, nodeRadius, fillPaint);
+            canvas.DrawCircle(centerX, centerY, nodeRadius, borderPaint);
+
+            // Report progress periodically
+            if (progressCallback != null && (i + 1) % NODE_PROGRESS_INTERVAL == 0)
+            {
+                progressCallback($"Drawing nodes... {i + 1}/{totalNodes}");
+            }
+        }
+    }
+
+    private void DrawRectangleNodesFromList(SKCanvas canvas, List<LayoutNode> nodes, Action<String>? progressCallback = null)
+    {
+        const Single DefaultFontSize = 12.0f;
+        const Single NodeStrokeWidth = 2.0f;
+        const Single CornerRadius = 5.0f;
+
+        using var fillPaint = new SKPaint
+        {
+            Style = SKPaintStyle.Fill,
+            IsAntialias = true
+        };
+
+        using var strokePaint = new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = NodeStrokeWidth,
+            IsAntialias = true
+        };
+
+        using var textPaint = new SKPaint
+        {
+            Style = SKPaintStyle.Fill,
+            IsAntialias = true,
+            Color = SKColors.Black,
+            TextSize = DefaultFontSize,
+            Typeface = SKTypeface.Default
+        };
+
+        var totalNodes = nodes.Count;
+        for (var i = 0; i < totalNodes; i++)
+        {
+            var node = nodes[i];
+            var nodeColor = _nodeColorCache[node.Value];
+
+            fillPaint.Color = nodeColor.WithAlpha(TRANSPARENT_FILL_ALPHA);
+            strokePaint.Color = nodeColor.WithAlpha(TRANSPARENT_BORDER_ALPHA);
+
+            var rect = new SKRect(node.X, node.Y, node.X + node.Width, node.Y + node.Height);
+            canvas.DrawRoundRect(rect, CornerRadius, CornerRadius, fillPaint);
+            canvas.DrawRoundRect(rect, CornerRadius, CornerRadius, strokePaint);
+
+            // Draw text
+            var text = node.Value.ToString();
+            var textBounds = new SKRect();
+            textPaint.MeasureText(text, ref textBounds);
+
+            var textX = node.X + (node.Width - textBounds.Width) / 2;
+            var textY = node.Y + (node.Height - textBounds.Height) / 2 - textBounds.Top;
+            canvas.DrawText(text, textX, textY, textPaint);
+
+            // Report progress periodically
+            if (progressCallback != null && (i + 1) % NODE_PROGRESS_INTERVAL == 0)
+            {
+                progressCallback($"Drawing nodes... {i + 1}/{totalNodes}");
+            }
         }
     }
 
