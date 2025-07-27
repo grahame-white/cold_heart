@@ -12,5 +12,6 @@ public class CommandLineOptions
     public String? AngularPngFile { get; set; }
     public NodeStyle AngularNodeStyle { get; set; } = NodeStyle.Circle;
     public AngularVisualizationConfig AngularConfig { get; set; } = new();
+    public Int32 MaxSequences { get; set; } = 1000;
     public Boolean ShowHelp { get; set; }
 }

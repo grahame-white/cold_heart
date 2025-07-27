@@ -18,7 +18,6 @@ public enum NodeStyle
 public class EnhancedPngExporter
 {
     private const Single BaseLineStrokeWidth = 1.0f;
-    private const Single MaxStrokeWidth = 8.0f;
 
     private static readonly SKColor BackgroundColor = SKColor.Parse("#ffffff"); // White background as required
 
@@ -695,7 +694,7 @@ public class EnhancedPngExporter
         Single normalizedThickness = (Single)traversalCount / maxTraversalCount;
         Single impactAdjustedThickness = (Single)Math.Pow(normalizedThickness, 1.0f / Math.Max(config.ThicknessImpact, 0.1f));
 
-        return BaseLineStrokeWidth + (impactAdjustedThickness * (MaxStrokeWidth - BaseLineStrokeWidth));
+        return BaseLineStrokeWidth + (impactAdjustedThickness * (config.MaxLineWidth - BaseLineStrokeWidth));
     }
 
     private Single CalculateNodeRadiusDirect(BigInteger nodeValue, TreeMetrics metrics, AngularVisualizationConfig config)

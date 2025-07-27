@@ -14,6 +14,7 @@ public class AngularVisualizationConfig
     public Single RightTurnAngle { get; set; } = 16.0f;
     public Single ThicknessImpact { get; set; } = 1.0f;
     public Single ColorImpact { get; set; } = 1.0f;
+    public Single MaxLineWidth { get; set; } = 8.0f;
     public DrawingOrder DrawingOrder { get; set; } = DrawingOrder.TreeOrder;
 
     // Path filtering options - only one should be set
@@ -56,6 +57,11 @@ public class AngularVisualizationConfig
         if (ColorImpact <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(ColorImpact), "Color impact must be positive.");
+        }
+
+        if (MaxLineWidth <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxLineWidth), "Maximum line width must be positive.");
         }
     }
 }

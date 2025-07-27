@@ -18,10 +18,12 @@ public class CommandLineParser
         ["--angular-right-turn"] = "Right turn angle for odd nodes (default: 16.0)",
         ["--angular-thickness-impact"] = "Impact of traversals on line thickness (default: 1.0, 0 = no impact)",
         ["--angular-color-impact"] = "Impact of path length on color (default: 1.0, higher = greater change)",
+        ["--angular-max-line-width"] = "Maximum line width for angular visualization (default: 8.0)",
         ["--angular-render-longest"] = "Render only top N longest paths",
         ["--angular-render-most-traversed"] = "Render only top N most traversed paths",
         ["--angular-render-random"] = "Render only N random paths from the entire set",
         ["--angular-draw-order"] = "Drawing order: tree (default) or least-to-most-traversed",
+        ["--sequences"] = "Maximum number of sequences to calculate (default: 1000)",
         ["--help"] = "Show this help message"
     };
 
@@ -75,6 +77,12 @@ public class CommandLineParser
                 case "--angular-draw-order":
                     ParseDrawingOrder(args, ref i, options);
                     break;
+                case "--angular-max-line-width":
+                    options.AngularConfig.MaxLineWidth = ParsePositiveFloat(args, ref i, "--angular-max-line-width", "maximum line width");
+                    break;
+                case "--sequences":
+                    options.MaxSequences = ParsePositiveInt(args, ref i, "--sequences", "number of sequences");
+                    break;
                 case "--help":
                 case "-h":
                     options.ShowHelp = true;
@@ -114,6 +122,16 @@ public class CommandLineParser
             return result;
         }
         throw new ArgumentException($"Error: Invalid {parameterName} '{value}'. Must be a positive integer.");
+    }
+
+    private Single ParsePositiveFloat(String[] args, ref Int32 index, String option, String parameterName)
+    {
+        var value = GetRequiredArgument(args, ref index, $"{option} requires a positive number");
+        if (Single.TryParse(value, out var result) && result > 0)
+        {
+            return result;
+        }
+        throw new ArgumentException($"Error: Invalid {parameterName} '{value}'. Must be a positive number.");
     }
 
     private void ParseNodeStyle(String[] args, ref Int32 index, CommandLineOptions options)
@@ -171,6 +189,8 @@ public class CommandLineParser
         Console.WriteLine("  ColdHeart --png-angular angular_tree.png");
         Console.WriteLine("  ColdHeart --png-angular angular_tree.png --angular-node-style rectangle");
         Console.WriteLine("  ColdHeart --png-angular angular_tree.png --angular-draw-order least-to-most-traversed");
+        Console.WriteLine("  ColdHeart --sequences 2000 --png-angular angular_tree.png");
+        Console.WriteLine("  ColdHeart --png-angular angular_tree.png --angular-max-line-width 12.0");
         Console.WriteLine("  ColdHeart --load old.json --save new.json --svg tree.svg");
     }
 }

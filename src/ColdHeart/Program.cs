@@ -9,8 +9,6 @@ namespace ColdHeart;
 
 internal class Program
 {
-    private const Int32 UPPER_LIMIT = 1000;
-
     static async Task<Int32> Main(String[] args)
     {
         try
@@ -53,9 +51,9 @@ internal class Program
             else
             {
                 // Generate sequence
-                Console.WriteLine($"Generating sequence for numbers 1 to {UPPER_LIMIT - 1}...");
+                Console.WriteLine($"Generating sequence for numbers 1 to {options.MaxSequences - 1}...");
                 generator = new SequenceGenerator();
-                for (BigInteger i = 1; i < UPPER_LIMIT; i++)
+                for (BigInteger i = 1; i < options.MaxSequences; i++)
                 {
                     generator.Add(i);
                 }
