@@ -872,12 +872,16 @@ public class EnhancedPngExporter
         // Build filtered layout tree keeping only paths to selected nodes
         var filteredLayout = FilterLayoutTree(rootLayout, selectedValues);
 
-        // Build filtered metrics - PRESERVE original max values for proper color scaling
+        // Get ALL node values that appear in the filtered tree (not just originally selected ones)
+        var allFilteredNodeValues = GetAllNodeValues(filteredLayout);
+
+        // Build filtered metrics - include ALL nodes that appear in the filtered tree
+        // This ensures proper color calculation for intermediate nodes in the filtered paths
         var filteredPathLengths = metrics.PathLengths
-            .Where(kvp => selectedValues.Contains(kvp.Key))
+            .Where(kvp => allFilteredNodeValues.Contains(kvp.Key))
             .ToDictionary();
         var filteredTraversalCounts = metrics.TraversalCounts
-            .Where(kvp => selectedValues.Contains(kvp.Key))
+            .Where(kvp => allFilteredNodeValues.Contains(kvp.Key))
             .ToDictionary();
 
         // CRITICAL FIX: Preserve original FurthestDistance and LongestPath for proper color scaling
@@ -924,5 +928,22 @@ public class EnhancedPngExporter
 
         // Check if any descendant is selected
         return node.Children.Any(child => HasSelectedDescendant(child, selectedValues));
+    }
+
+    private HashSet<BigInteger> GetAllNodeValues(LayoutNode node)
+    {
+        var nodeValues = new HashSet<BigInteger>();
+        CollectNodeValues(node, nodeValues);
+        return nodeValues;
+    }
+
+    private void CollectNodeValues(LayoutNode node, HashSet<BigInteger> nodeValues)
+    {
+        nodeValues.Add(node.Value);
+
+        foreach (var child in node.Children)
+        {
+            CollectNodeValues(child, nodeValues);
+        }
     }
 }
