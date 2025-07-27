@@ -44,7 +44,7 @@ public class TreeMapVisualizer
         _pngExporter.ExportToPng(layout, filePath);
     }
 
-    public void ExportToAngularPng(TreeNode root, String filePath, Action<String>? progressCallback = null)
+    public void ExportToAngularPng(TreeNode root, String filePath, NodeStyle nodeStyle = NodeStyle.Circle, Action<String>? progressCallback = null)
     {
         progressCallback?.Invoke("Calculating angular layout...");
         var layout = CalculateAngularLayout(root);
@@ -52,7 +52,7 @@ public class TreeMapVisualizer
         progressCallback?.Invoke("Calculating tree metrics...");
         var metrics = _angularLayoutCalculator.CalculateTreeMetrics(root);
 
-        _enhancedPngExporter.ExportToPng(layout, metrics, filePath, progressCallback);
+        _enhancedPngExporter.ExportToPng(layout, metrics, filePath, nodeStyle, progressCallback);
     }
 
     public async Task ExportToSvgAsync(LayoutNode layout, String filePath)
@@ -67,8 +67,8 @@ public class TreeMapVisualizer
         _pngExporter.ExportToPng(layout, filePath);
     }
 
-    public void ExportEnhancedToPng(LayoutNode layout, TreeMetrics metrics, String filePath, Action<String>? progressCallback = null)
+    public void ExportEnhancedToPng(LayoutNode layout, TreeMetrics metrics, String filePath, NodeStyle nodeStyle = NodeStyle.Circle, Action<String>? progressCallback = null)
     {
-        _enhancedPngExporter.ExportToPng(layout, metrics, filePath, progressCallback);
+        _enhancedPngExporter.ExportToPng(layout, metrics, filePath, nodeStyle, progressCallback);
     }
 }

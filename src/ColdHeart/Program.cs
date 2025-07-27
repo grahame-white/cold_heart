@@ -21,6 +21,7 @@ internal class Program
             String? svgFile = null;
             String? pngFile = null;
             String? angularPngFile = null;
+            NodeStyle angularNodeStyle = NodeStyle.Circle; // Default to circle nodes
 
             // Parse command line arguments
             for (Int32 i = 0; i < args.Length; i++)
@@ -79,6 +80,29 @@ internal class Program
                         else
                         {
                             Console.WriteLine("Error: --png-angular requires a filename");
+                            return 1;
+                        }
+                        break;
+                    case "--angular-node-style":
+                        if (i + 1 < args.Length)
+                        {
+                            var styleArg = args[++i].ToLowerInvariant();
+                            switch (styleArg)
+                            {
+                                case "circle":
+                                    angularNodeStyle = NodeStyle.Circle;
+                                    break;
+                                case "rectangle":
+                                    angularNodeStyle = NodeStyle.Rectangle;
+                                    break;
+                                default:
+                                    Console.WriteLine($"Error: Invalid node style '{args[i]}'. Valid options are: circle, rectangle");
+                                    return 1;
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: --angular-node-style requires a style (circle or rectangle)");
                             return 1;
                         }
                         break;
@@ -148,7 +172,7 @@ internal class Program
                 if (angularPngFile != null)
                 {
                     Console.WriteLine($"Exporting angular tree visualization to PNG '{angularPngFile}'...");
-                    visualizer.ExportToAngularPng(generator.Root, angularPngFile, progress =>
+                    visualizer.ExportToAngularPng(generator.Root, angularPngFile, angularNodeStyle, progress =>
                     {
                         Console.WriteLine($"  {progress}");
                     });
@@ -193,18 +217,20 @@ internal class Program
         Console.WriteLine("  ColdHeart [options]");
         Console.WriteLine();
         Console.WriteLine("Options:");
-        Console.WriteLine("  --load <filename>       Load a previously serialized sequence from file");
-        Console.WriteLine("  --save <filename>       Save the generated sequence to file");
-        Console.WriteLine("  --svg <filename>        Export tree visualization to SVG format");
-        Console.WriteLine("  --png <filename>        Export tree visualization to PNG format (traditional layout)");
-        Console.WriteLine("  --png-angular <filename> Export tree visualization to PNG format (angular layout)");
-        Console.WriteLine("  --help, -h              Show this help message");
+        Console.WriteLine("  --load <filename>         Load a previously serialized sequence from file");
+        Console.WriteLine("  --save <filename>         Save the generated sequence to file");
+        Console.WriteLine("  --svg <filename>          Export tree visualization to SVG format");
+        Console.WriteLine("  --png <filename>          Export tree visualization to PNG format (traditional layout)");
+        Console.WriteLine("  --png-angular <filename>  Export tree visualization to PNG format (angular layout)");
+        Console.WriteLine("  --angular-node-style <style>  Node style for angular PNG (circle or rectangle, default: circle)");
+        Console.WriteLine("  --help, -h                Show this help message");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  ColdHeart --save sequence.json");
         Console.WriteLine("  ColdHeart --load sequence.json --svg tree.svg");
         Console.WriteLine("  ColdHeart --svg tree.svg --png tree.png");
         Console.WriteLine("  ColdHeart --png-angular angular_tree.png");
+        Console.WriteLine("  ColdHeart --png-angular angular_tree.png --angular-node-style rectangle");
         Console.WriteLine("  ColdHeart --load old.json --save new.json --svg tree.svg");
     }
 }
