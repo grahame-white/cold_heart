@@ -9,97 +9,51 @@ namespace ColdHeart;
 
 internal class Program
 {
-    private const Int32 UPPER_LIMIT = 1000;
-
     static async Task<Int32> Main(String[] args)
     {
         try
         {
-            SequenceGenerator generator;
-            String? loadFile = null;
-            String? saveFile = null;
-            String? svgFile = null;
-            String? pngFile = null;
+            var parser = new CommandLineParser();
+            CommandLineOptions options;
 
-            // Parse command line arguments
-            for (Int32 i = 0; i < args.Length; i++)
+            try
             {
-                switch (args[i])
-                {
-                    case "--load":
-                        if (i + 1 < args.Length)
-                        {
-                            loadFile = args[++i];
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --load requires a filename");
-                            return 1;
-                        }
-                        break;
-                    case "--save":
-                        if (i + 1 < args.Length)
-                        {
-                            saveFile = args[++i];
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --save requires a filename");
-                            return 1;
-                        }
-                        break;
-                    case "--svg":
-                        if (i + 1 < args.Length)
-                        {
-                            svgFile = args[++i];
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --svg requires a filename");
-                            return 1;
-                        }
-                        break;
-                    case "--png":
-                        if (i + 1 < args.Length)
-                        {
-                            pngFile = args[++i];
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --png requires a filename");
-                            return 1;
-                        }
-                        break;
-                    case "--help":
-                    case "-h":
-                        PrintUsage();
-                        return 0;
-                    default:
-                        Console.WriteLine($"Error: Unknown argument '{args[i]}'");
-                        PrintUsage();
-                        return 1;
-                }
+                options = parser.Parse(args);
             }
-
-            // Load from file if specified
-            if (loadFile != null && !File.Exists(loadFile))
+            catch (ArgumentException ex)
             {
-                Console.WriteLine($"Error: File '{loadFile}' does not exist");
+                Console.WriteLine(ex.Message);
+                parser.PrintUsage();
                 return 1;
             }
 
-            if (loadFile != null)
+            if (options.ShowHelp)
             {
-                Console.WriteLine($"Loading sequence from '{loadFile}'...");
-                generator = await SequenceGenerator.LoadFromFileAsync(loadFile);
+                parser.PrintUsage();
+                return 0;
+            }
+
+            SequenceGenerator generator;
+
+            // Load from file if specified
+            if (options.LoadFile != null && !File.Exists(options.LoadFile))
+            {
+                Console.WriteLine($"Error: File '{options.LoadFile}' does not exist");
+                return 1;
+            }
+
+            if (options.LoadFile != null)
+            {
+                Console.WriteLine($"Loading sequence from '{options.LoadFile}'...");
+                generator = await SequenceGenerator.LoadFromFileAsync(options.LoadFile);
                 Console.WriteLine("Sequence loaded successfully.");
             }
             else
             {
                 // Generate sequence
-                Console.WriteLine($"Generating sequence for numbers 1 to {UPPER_LIMIT - 1}...");
+                Console.WriteLine($"Generating sequence for numbers 1 to {options.MaxSequences - 1}...");
                 generator = new SequenceGenerator();
-                for (BigInteger i = 1; i < UPPER_LIMIT; i++)
+                for (BigInteger i = 1; i < options.MaxSequences; i++)
                 {
                     generator.Add(i);
                 }
@@ -107,30 +61,54 @@ internal class Program
             }
 
             // Save to file if specified
-            if (saveFile != null)
+            if (options.SaveFile != null)
             {
-                Console.WriteLine($"Saving sequence to '{saveFile}'...");
-                await generator.SaveToFileAsync(saveFile);
+                Console.WriteLine($"Saving sequence to '{options.SaveFile}'...");
+                await generator.SaveToFileAsync(options.SaveFile);
                 Console.WriteLine("Sequence saved successfully.");
             }
 
             // Export visualizations if specified
-            if (svgFile != null || pngFile != null)
+            if (options.SvgFile != null || options.PngFile != null || options.AngularPngFile != null)
             {
+                // Validate angular configuration if angular PNG is requested
+                if (options.AngularPngFile != null)
+                {
+                    try
+                    {
+                        options.AngularConfig.Validate();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error: Invalid angular visualization configuration - {ex.Message}");
+                        return 1;
+                    }
+                }
+
                 var visualizer = new TreeMapVisualizer();
 
-                if (svgFile != null)
+                if (options.SvgFile != null)
                 {
-                    Console.WriteLine($"Exporting tree visualization to SVG '{svgFile}'...");
-                    await visualizer.ExportToSvgAsync(generator.Root, svgFile);
+                    Console.WriteLine($"Exporting tree visualization to SVG '{options.SvgFile}'...");
+                    await visualizer.ExportToSvgAsync(generator.Root, options.SvgFile);
                     Console.WriteLine("SVG export completed successfully.");
                 }
 
-                if (pngFile != null)
+                if (options.PngFile != null)
                 {
-                    Console.WriteLine($"Exporting tree visualization to PNG '{pngFile}'...");
-                    visualizer.ExportToPng(generator.Root, pngFile);
+                    Console.WriteLine($"Exporting tree visualization to PNG '{options.PngFile}'...");
+                    visualizer.ExportToPng(generator.Root, options.PngFile);
                     Console.WriteLine("PNG export completed successfully.");
+                }
+
+                if (options.AngularPngFile != null)
+                {
+                    Console.WriteLine($"Exporting angular tree visualization to PNG '{options.AngularPngFile}'...");
+                    visualizer.ExportToAngularPng(generator.Root, options.AngularPngFile, options.AngularConfig, options.AngularNodeStyle, progress =>
+                    {
+                        Console.WriteLine($"  {progress}");
+                    });
+                    Console.WriteLine("Angular PNG export completed successfully.");
                 }
             }
 
@@ -161,26 +139,5 @@ internal class Program
             Console.WriteLine($"Error: I/O operation failed - {ex.Message}");
             return 1;
         }
-    }
-
-    private static void PrintUsage()
-    {
-        Console.WriteLine("ColdHeart - Collatz sequence generator and serializer");
-        Console.WriteLine();
-        Console.WriteLine("Usage:");
-        Console.WriteLine("  ColdHeart [options]");
-        Console.WriteLine();
-        Console.WriteLine("Options:");
-        Console.WriteLine("  --load <filename>   Load a previously serialized sequence from file");
-        Console.WriteLine("  --save <filename>   Save the generated sequence to file");
-        Console.WriteLine("  --svg <filename>    Export tree visualization to SVG format");
-        Console.WriteLine("  --png <filename>    Export tree visualization to PNG format");
-        Console.WriteLine("  --help, -h          Show this help message");
-        Console.WriteLine();
-        Console.WriteLine("Examples:");
-        Console.WriteLine("  ColdHeart --save sequence.json");
-        Console.WriteLine("  ColdHeart --load sequence.json --svg tree.svg");
-        Console.WriteLine("  ColdHeart --svg tree.svg --png tree.png");
-        Console.WriteLine("  ColdHeart --load old.json --save new.json --svg tree.svg");
     }
 }

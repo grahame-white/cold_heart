@@ -7,19 +7,28 @@ namespace libColdHeart;
 public class TreeMapVisualizer
 {
     private readonly TreeLayoutCalculator _layoutCalculator;
+    private readonly AngularTreeLayoutCalculator _angularLayoutCalculator;
     private readonly SvgExporter _svgExporter;
     private readonly PngExporter _pngExporter;
+    private readonly EnhancedPngExporter _enhancedPngExporter;
 
     public TreeMapVisualizer()
     {
         _layoutCalculator = new TreeLayoutCalculator();
+        _angularLayoutCalculator = new AngularTreeLayoutCalculator();
         _svgExporter = new SvgExporter();
         _pngExporter = new PngExporter();
+        _enhancedPngExporter = new EnhancedPngExporter();
     }
 
     public LayoutNode CalculateLayout(TreeNode root)
     {
         return _layoutCalculator.CalculateLayout(root);
+    }
+
+    public LayoutNode CalculateAngularLayout(TreeNode root)
+    {
+        return _angularLayoutCalculator.CalculateLayout(root);
     }
 
     public async Task ExportToSvgAsync(TreeNode root, String filePath)
@@ -35,6 +44,17 @@ public class TreeMapVisualizer
         _pngExporter.ExportToPng(layout, filePath);
     }
 
+    public void ExportToAngularPng(TreeNode root, String filePath, AngularVisualizationConfig config, NodeStyle nodeStyle = NodeStyle.Circle, Action<String>? progressCallback = null)
+    {
+        progressCallback?.Invoke("Calculating angular layout...");
+        var layout = _angularLayoutCalculator.CalculateLayout(root, config);
+
+        progressCallback?.Invoke("Calculating tree metrics...");
+        var metrics = _angularLayoutCalculator.CalculateTreeMetrics(root);
+
+        _enhancedPngExporter.ExportToPng(layout, metrics, filePath, config, nodeStyle, progressCallback);
+    }
+
     public async Task ExportToSvgAsync(LayoutNode layout, String filePath)
     {
         var svg = _svgExporter.ExportToSvg(layout);
@@ -43,6 +63,12 @@ public class TreeMapVisualizer
 
     public void ExportToPng(LayoutNode layout, String filePath)
     {
+        // For legacy compatibility - use traditional PNG export when TreeMetrics are not available
         _pngExporter.ExportToPng(layout, filePath);
+    }
+
+    public void ExportEnhancedToPng(LayoutNode layout, TreeMetrics metrics, String filePath, AngularVisualizationConfig config, NodeStyle nodeStyle = NodeStyle.Circle, Action<String>? progressCallback = null)
+    {
+        _enhancedPngExporter.ExportToPng(layout, metrics, filePath, config, nodeStyle, progressCallback);
     }
 }

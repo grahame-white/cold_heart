@@ -7,10 +7,10 @@ namespace libColdHeart;
 
 public class TreeLayoutCalculator
 {
-    private const Single NodeSpacingY = 80.0f;
-    private const Single NodeSpacingX = 20.0f;
-    private const Single DefaultNodeWidth = 60.0f;
-    private const Single DefaultNodeHeight = 30.0f;
+    private const Single NODE_SPACING_Y = 80.0f;
+    private const Single NODE_SPACING_X = 20.0f;
+    private const Single DEFAULT_NODE_WIDTH = 60.0f;
+    private const Single DEFAULT_NODE_HEIGHT = 30.0f;
 
     public LayoutNode CalculateLayout(TreeNode root)
     {
@@ -23,8 +23,8 @@ public class TreeLayoutCalculator
     {
         var layoutNode = new LayoutNode(node)
         {
-            Width = DefaultNodeWidth,
-            Height = DefaultNodeHeight
+            Width = DEFAULT_NODE_WIDTH,
+            Height = DEFAULT_NODE_HEIGHT
         };
 
         var children = new List<TreeNode?> { node.LeftChild, node.RightChild }
@@ -55,7 +55,7 @@ public class TreeLayoutCalculator
         {
             // Single child: place above parent in same X position
             var child = node.Children[0];
-            CalculatePositions(child, x, y + NodeSpacingY);
+            CalculatePositions(child, x, y + NODE_SPACING_Y);
         }
         else
         {
@@ -74,8 +74,8 @@ public class TreeLayoutCalculator
                 Single childSubtreeWidth = CalculateSubtreeWidth(new List<LayoutNode> { child });
                 Single childCenterX = currentX + childSubtreeWidth / 2.0f;
 
-                CalculatePositions(child, childCenterX, y + NodeSpacingY);
-                currentX += childSubtreeWidth + NodeSpacingX;
+                CalculatePositions(child, childCenterX, y + NODE_SPACING_Y);
+                currentX += childSubtreeWidth + NODE_SPACING_X;
             }
         }
     }
@@ -101,7 +101,7 @@ public class TreeLayoutCalculator
         {
             totalWidth += CalculateSubtreeWidth(new List<LayoutNode> { nodes[i] });
             if (i < nodes.Count - 1)
-                totalWidth += NodeSpacingX;
+                totalWidth += NODE_SPACING_X;
         }
 
         return totalWidth;
