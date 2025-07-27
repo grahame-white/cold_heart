@@ -6,6 +6,8 @@ This repository uses Super-Linter for automated code quality checks. Make sure y
 use this script to ensure that all of your changes are correctly linted / formatted **before** committing your changes, this step
 is not optional.
 
+**Note:** Super-linter can take a few minutes to complete due to the number of linters it uses. The run time can be impacted by the number of files in the changes set. It is expected that a complete run finishes before changes are merged/pushed, as this will save time in the long run by catching issues early.
+
 ## **CRITICAL: autofix First Policy**
 
 **Before manually addressing any linting issues, you MUST first run the autofix mode:**
