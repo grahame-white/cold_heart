@@ -8,10 +8,10 @@ namespace libColdHeart;
 
 public class PngExporter
 {
-    private const Single DefaultFontSize = 12.0f;
-    private const Single NodeStrokeWidth = 2.0f;
-    private const Single LineStrokeWidth = 2.0f;
-    private const Single CornerRadius = 5.0f;
+    private const Single DEFAULT_FONT_SIZE = 12.0f;
+    private const Single NODE_STROKE_WIDTH = 2.0f;
+    private const Single LINE_STROKE_WIDTH = 2.0f;
+    private const Single CORNER_RADIUS = 5.0f;
 
     private static readonly SKColor NodeFillColor = SKColor.Parse("#e6f3ff");
     private static readonly SKColor NodeStrokeColor = SKColor.Parse("#0066cc");
@@ -96,7 +96,7 @@ public class PngExporter
         using var paint = new SKPaint
         {
             Color = LineColor,
-            StrokeWidth = LineStrokeWidth,
+            StrokeWidth = LINE_STROKE_WIDTH,
             Style = SKPaintStyle.Stroke,
             IsAntialias = true
         };
@@ -129,13 +129,13 @@ public class PngExporter
         using var strokePaint = new SKPaint
         {
             Color = NodeStrokeColor,
-            StrokeWidth = NodeStrokeWidth,
+            StrokeWidth = NODE_STROKE_WIDTH,
             Style = SKPaintStyle.Stroke,
             IsAntialias = true
         };
 
         var rect = new SKRect(node.X, node.Y, node.X + node.Width, node.Y + node.Height);
-        using var roundRect = new SKRoundRect(rect, CornerRadius, CornerRadius);
+        using var roundRect = new SKRoundRect(rect, CORNER_RADIUS, CORNER_RADIUS);
 
         canvas.DrawRoundRect(roundRect, fillPaint);
         canvas.DrawRoundRect(roundRect, strokePaint);
@@ -144,14 +144,14 @@ public class PngExporter
         using var textPaint = new SKPaint
         {
             Color = TextColor,
-            TextSize = DefaultFontSize,
+            TextSize = DEFAULT_FONT_SIZE,
             IsAntialias = true,
             TextAlign = SKTextAlign.Center,
             Typeface = SKTypeface.FromFamilyName("Arial")
         };
 
         Single textX = node.X + (node.Width / 2.0f);
-        Single textY = node.Y + (node.Height / 2.0f) + (DefaultFontSize / 3.0f); // Adjust for baseline
+        Single textY = node.Y + (node.Height / 2.0f) + (DEFAULT_FONT_SIZE / 3.0f); // Adjust for baseline
 
         canvas.DrawText(node.Value.ToString(), textX, textY, textPaint);
 

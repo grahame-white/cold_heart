@@ -17,19 +17,19 @@ public enum NodeStyle
 
 public class EnhancedPngExporter
 {
-    private const Single BaseLineStrokeWidth = 1.0f;
-    private const String WhiteColorHex = "#ffffff";
-    private const Byte NodeGreenColorComponent = 80;
-    private const Byte LineGreenColorComponent = 64;
-    private const Byte TransparentBorderAlpha = 180;
-    private const Byte TransparentFillAlpha = 100;
+    private const Single BASE_LINE_STROKE_WIDTH = 1.0f;
+    private const String WHITE_COLOR_HEX = "#ffffff";
+    private const Byte NODE_GREEN_COLOR_COMPONENT = 80;
+    private const Byte LINE_GREEN_COLOR_COMPONENT = 64;
+    private const Byte TRANSPARENT_BORDER_ALPHA = 180;
+    private const Byte TRANSPARENT_FILL_ALPHA = 100;
 
     // Progress reporting and layout constants
-    private const Int32 ConnectionProgressInterval = 50; // Report progress every 50 connections for frequent updates
-    private const Int32 NodeProgressInterval = 100; // Report progress every 100 nodes (less frequent than connections)
-    private const Single ImageMargin = 50.0f; // Margin around the image content
+    private const Int32 CONNECTION_PROGRESS_INTERVAL = 50; // Report progress every 50 connections for frequent updates
+    private const Int32 NODE_PROGRESS_INTERVAL = 100; // Report progress every 100 nodes (less frequent than connections)
+    private const Single IMAGE_MARGIN = 50.0f; // Margin around the image content
 
-    private static readonly SKColor BackgroundColor = SKColor.Parse(WhiteColorHex); // White background as required
+    private static readonly SKColor BackgroundColor = SKColor.Parse(WHITE_COLOR_HEX); // White background as required
 
     // Cache for expensive calculations to avoid repeated computation
     private readonly ConcurrentDictionary<BigInteger, SKColor> _nodeColorCache = new();
@@ -63,7 +63,7 @@ public class EnhancedPngExporter
         var bounds = CalculateBoundsOptimized(filteredLayout);
 
         // Add margins
-        Single margin = ImageMargin;
+        Single margin = IMAGE_MARGIN;
         Single originalWidth = bounds.Width + (2 * margin);
         Single originalHeight = bounds.Height + (2 * margin);
 
@@ -280,7 +280,7 @@ public class EnhancedPngExporter
                 processedNodes++;
 
                 // Report progress every 50 nodes
-                if (processedNodes % ConnectionProgressInterval == 0 || processedNodes == totalNodes)
+                if (processedNodes % CONNECTION_PROGRESS_INTERVAL == 0 || processedNodes == totalNodes)
                 {
                     var percentage = (Int32)((processedNodes / (Single)totalNodes) * 100);
                     progressCallback($"Drawing connections... {processedNodes}/{totalNodes} ({percentage}%)");
@@ -357,7 +357,7 @@ public class EnhancedPngExporter
             processedNodes++;
 
             // Report progress every 50 nodes to avoid excessive output
-            if (processedNodes % ConnectionProgressInterval == 0 || processedNodes == totalNodes)
+            if (processedNodes % CONNECTION_PROGRESS_INTERVAL == 0 || processedNodes == totalNodes)
             {
                 var percentage = (Int32)((processedNodes / (Single)totalNodes) * 100);
                 progressCallback($"Drawing connections... {processedNodes}/{totalNodes} ({percentage}%)");
@@ -416,7 +416,7 @@ public class EnhancedPngExporter
 
         // Update paint properties
         fillPaint.Color = nodeColor;
-        borderPaint.Color = nodeColor.WithAlpha(TransparentBorderAlpha); // Slightly transparent border
+        borderPaint.Color = nodeColor.WithAlpha(TRANSPARENT_BORDER_ALPHA); // Slightly transparent border
 
         Single centerX = node.X + (node.Width / 2.0f);
         Single centerY = node.Y + (node.Height / 2.0f);
@@ -427,7 +427,7 @@ public class EnhancedPngExporter
         processedNodes++;
 
         // Report progress every 100 nodes for node drawing (less frequent than connections)
-        if (processedNodes % NodeProgressInterval == 0 || processedNodes == totalNodes)
+        if (processedNodes % NODE_PROGRESS_INTERVAL == 0 || processedNodes == totalNodes)
         {
             var percentage = (Int32)((processedNodes / (Single)totalNodes) * 100);
             progressCallback($"Drawing nodes... {processedNodes}/{totalNodes} ({percentage}%)");
@@ -448,7 +448,7 @@ public class EnhancedPngExporter
 
         // Update paint properties
         fillPaint.Color = nodeColor;
-        borderPaint.Color = nodeColor.WithAlpha(TransparentBorderAlpha); // Slightly transparent border
+        borderPaint.Color = nodeColor.WithAlpha(TRANSPARENT_BORDER_ALPHA); // Slightly transparent border
 
         Single centerX = node.X + (node.Width / 2.0f);
         Single centerY = node.Y + (node.Height / 2.0f);
@@ -508,7 +508,7 @@ public class EnhancedPngExporter
     {
         // Use cached color
         var nodeColor = _nodeColorCache[node.Value];
-        var fillColor = nodeColor.WithAlpha(TransparentFillAlpha);
+        var fillColor = nodeColor.WithAlpha(TRANSPARENT_FILL_ALPHA);
 
         // Update paint properties
         fillPaint.Color = fillColor;
@@ -529,7 +529,7 @@ public class EnhancedPngExporter
         processedNodes++;
 
         // Report progress every 100 nodes for node drawing
-        if (processedNodes % NodeProgressInterval == 0 || processedNodes == totalNodes)
+        if (processedNodes % NODE_PROGRESS_INTERVAL == 0 || processedNodes == totalNodes)
         {
             var percentage = (Int32)((processedNodes / (Single)totalNodes) * 100);
             progressCallback($"Drawing nodes... {processedNodes}/{totalNodes} ({percentage}%)");
@@ -546,7 +546,7 @@ public class EnhancedPngExporter
     {
         // Use cached color
         var nodeColor = _nodeColorCache[node.Value];
-        var fillColor = nodeColor.WithAlpha(TransparentFillAlpha);
+        var fillColor = nodeColor.WithAlpha(TRANSPARENT_FILL_ALPHA);
 
         // Update paint properties
         fillPaint.Color = fillColor;
@@ -648,7 +648,7 @@ public class EnhancedPngExporter
         // Interpolate between blue (low intensity) and red (high intensity)
         Byte red = (Byte)(impactAdjustedIntensity * 255);
         Byte blue = (Byte)((1.0f - impactAdjustedIntensity) * 255);
-        Byte green = NodeGreenColorComponent; // Keep some green for visual distinction
+        Byte green = NODE_GREEN_COLOR_COMPONENT; // Keep some green for visual distinction
 
         return new SKColor(red, green, blue);
     }
@@ -675,7 +675,7 @@ public class EnhancedPngExporter
         // Interpolate between blue (low intensity) and red (high intensity)
         Byte red = (Byte)(impactAdjustedIntensity * 255);
         Byte blue = (Byte)((1.0f - impactAdjustedIntensity) * 255);
-        Byte green = LineGreenColorComponent; // Keep some green for visual distinction
+        Byte green = LINE_GREEN_COLOR_COMPONENT; // Keep some green for visual distinction
 
         return new SKColor(red, green, blue);
     }
@@ -688,14 +688,14 @@ public class EnhancedPngExporter
 
         if (maxTraversalCount <= 1 || config.ThicknessImpact == 0)
         {
-            return BaseLineStrokeWidth;
+            return BASE_LINE_STROKE_WIDTH;
         }
 
         // Apply impact factor - 0 means no impact, higher values amplify the effect
         Single normalizedThickness = (Single)traversalCount / maxTraversalCount;
         Single impactAdjustedThickness = (Single)Math.Pow(normalizedThickness, 1.0f / Math.Max(config.ThicknessImpact, 0.1f));
 
-        return BaseLineStrokeWidth + (impactAdjustedThickness * (config.MaxLineWidth - BaseLineStrokeWidth));
+        return BASE_LINE_STROKE_WIDTH + (impactAdjustedThickness * (config.MaxLineWidth - BASE_LINE_STROKE_WIDTH));
     }
 
     private Single CalculateNodeRadiusDirect(BigInteger nodeValue, TreeMetrics metrics, AngularVisualizationConfig config)

@@ -38,6 +38,8 @@ is not optional.
 
 **Note**: EditorConfig violations cannot be auto-fixed and must be addressed manually by ensuring proper file endings, whitespace, and indentation.
 
+**All linting errors must be fixed regardless of when they were introduced as the linting workflow is a defined quality gate that will prevent merging until issues have been resolved.**
+
 ## Code Formatting Guidelines
 
 This repository uses an `.editorconfig` file to define coding standards. When making code changes, ensure compliance with the following formatting rules:
