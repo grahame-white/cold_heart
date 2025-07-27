@@ -24,6 +24,11 @@ public class EnhancedPngExporter
     private const Byte TransparentBorderAlpha = 180;
     private const Byte TransparentFillAlpha = 100;
 
+    // Progress reporting and layout constants
+    private const Int32 ConnectionProgressInterval = 50; // Report progress every 50 connections for frequent updates
+    private const Int32 NodeProgressInterval = 100; // Report progress every 100 nodes (less frequent than connections)
+    private const Single ImageMargin = 50.0f; // Margin around the image content
+
     private static readonly SKColor BackgroundColor = SKColor.Parse(WhiteColorHex); // White background as required
 
     // Cache for expensive calculations to avoid repeated computation
@@ -58,7 +63,7 @@ public class EnhancedPngExporter
         var bounds = CalculateBoundsOptimized(filteredLayout);
 
         // Add margins
-        Single margin = 50.0f;
+        Single margin = ImageMargin;
         Single originalWidth = bounds.Width + (2 * margin);
         Single originalHeight = bounds.Height + (2 * margin);
 
@@ -275,7 +280,7 @@ public class EnhancedPngExporter
                 processedNodes++;
 
                 // Report progress every 50 nodes
-                if (processedNodes % 50 == 0 || processedNodes == totalNodes)
+                if (processedNodes % ConnectionProgressInterval == 0 || processedNodes == totalNodes)
                 {
                     var percentage = (Int32)((processedNodes / (Single)totalNodes) * 100);
                     progressCallback($"Drawing connections... {processedNodes}/{totalNodes} ({percentage}%)");
@@ -352,7 +357,7 @@ public class EnhancedPngExporter
             processedNodes++;
 
             // Report progress every 50 nodes to avoid excessive output
-            if (processedNodes % 50 == 0 || processedNodes == totalNodes)
+            if (processedNodes % ConnectionProgressInterval == 0 || processedNodes == totalNodes)
             {
                 var percentage = (Int32)((processedNodes / (Single)totalNodes) * 100);
                 progressCallback($"Drawing connections... {processedNodes}/{totalNodes} ({percentage}%)");
@@ -422,7 +427,7 @@ public class EnhancedPngExporter
         processedNodes++;
 
         // Report progress every 100 nodes for node drawing (less frequent than connections)
-        if (processedNodes % 100 == 0 || processedNodes == totalNodes)
+        if (processedNodes % NodeProgressInterval == 0 || processedNodes == totalNodes)
         {
             var percentage = (Int32)((processedNodes / (Single)totalNodes) * 100);
             progressCallback($"Drawing nodes... {processedNodes}/{totalNodes} ({percentage}%)");
@@ -524,7 +529,7 @@ public class EnhancedPngExporter
         processedNodes++;
 
         // Report progress every 100 nodes for node drawing
-        if (processedNodes % 100 == 0 || processedNodes == totalNodes)
+        if (processedNodes % NodeProgressInterval == 0 || processedNodes == totalNodes)
         {
             var percentage = (Int32)((processedNodes / (Single)totalNodes) * 100);
             progressCallback($"Drawing nodes... {processedNodes}/{totalNodes} ({percentage}%)");
