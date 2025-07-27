@@ -246,6 +246,34 @@ public class EnhancedPngExporterTests
     }
 
     [Test]
+    public void ExportToPng_WithRenderLeastTraversedPathsFilter_CompletesSuccessfully()
+    {
+        for (BigInteger i = 2; i <= 8; i++)
+        {
+            _generator.Add(i);
+        }
+        var layout = _angularCalculator.CalculateLayout(_generator.Root);
+        var metrics = _angularCalculator.CalculateTreeMetrics(_generator.Root);
+        var config = new AngularVisualizationConfig
+        {
+            RenderLeastTraversedPaths = 3
+        };
+        var tempFile = Path.GetTempFileName() + ".png";
+
+        try
+        {
+            _pngExporter.ExportToPng(layout, metrics, tempFile, config);
+
+            Assert.That(File.Exists(tempFile), Is.True);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [Test]
     public void ExportToPng_WithRenderRandomPathsFilter_CompletesSuccessfully()
     {
         for (BigInteger i = 2; i <= 8; i++)
@@ -441,6 +469,7 @@ public class EnhancedPngExporterTests
     {
         yield return new TestCaseData(new AngularVisualizationConfig { RenderLongestPaths = 3 });
         yield return new TestCaseData(new AngularVisualizationConfig { RenderMostTraversedPaths = 5 });
+        yield return new TestCaseData(new AngularVisualizationConfig { RenderLeastTraversedPaths = 3 });
         yield return new TestCaseData(new AngularVisualizationConfig { RenderRandomPaths = 4 });
     }
 

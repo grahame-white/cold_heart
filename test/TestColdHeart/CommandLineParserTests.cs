@@ -250,6 +250,16 @@ public class CommandLineParserTests
     }
 
     [Test]
+    public void Parse_WithAngularRenderLeastTraversedArgument_SetsRenderLeastTraversedPaths()
+    {
+        var args = new[] { "--angular-render-least-traversed", "25" };
+
+        var options = _parser.Parse(args);
+
+        Assert.That(options.AngularConfig.RenderLeastTraversedPaths, Is.EqualTo(25));
+    }
+
+    [Test]
     public void Parse_WithAngularRenderRandomArgument_SetsRenderRandomPaths()
     {
         var args = new[] { "--angular-render-random", "75" };

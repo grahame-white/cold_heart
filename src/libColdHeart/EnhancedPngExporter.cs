@@ -50,7 +50,7 @@ public class EnhancedPngExporter
         // Apply path filtering if specified
         var filteredLayout = rootLayout;
         var filteredMetrics = metrics;
-        if (config.RenderLongestPaths.HasValue || config.RenderMostTraversedPaths.HasValue || config.RenderRandomPaths.HasValue)
+        if (config.RenderLongestPaths.HasValue || config.RenderMostTraversedPaths.HasValue || config.RenderLeastTraversedPaths.HasValue || config.RenderRandomPaths.HasValue)
         {
             progressCallback?.Invoke("Filtering paths...");
             (filteredLayout, filteredMetrics) = FilterPaths(rootLayout, metrics, config);
@@ -995,6 +995,15 @@ public class EnhancedPngExporter
             selectedValues = metrics.TraversalCounts
                 .OrderByDescending(kvp => kvp.Value)
                 .Take(config.RenderMostTraversedPaths.Value)
+                .Select(kvp => kvp.Key)
+                .ToHashSet();
+        }
+        else if (config.RenderLeastTraversedPaths.HasValue)
+        {
+            // Select top N nodes with lowest traversal counts
+            selectedValues = metrics.TraversalCounts
+                .OrderBy(kvp => kvp.Value)
+                .Take(config.RenderLeastTraversedPaths.Value)
                 .Select(kvp => kvp.Key)
                 .ToHashSet();
         }

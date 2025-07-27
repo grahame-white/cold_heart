@@ -20,6 +20,7 @@ public class AngularVisualizationConfig
     // Path filtering options - only one should be set
     public Int32? RenderLongestPaths { get; set; }
     public Int32? RenderMostTraversedPaths { get; set; }
+    public Int32? RenderLeastTraversedPaths { get; set; }
     public Int32? RenderRandomPaths { get; set; }
 
     public AngularVisualizationConfig()
@@ -42,6 +43,7 @@ public class AngularVisualizationConfig
         var filterCount = 0;
         if (RenderLongestPaths.HasValue) filterCount++;
         if (RenderMostTraversedPaths.HasValue) filterCount++;
+        if (RenderLeastTraversedPaths.HasValue) filterCount++;
         if (RenderRandomPaths.HasValue) filterCount++;
 
         if (filterCount > 1)

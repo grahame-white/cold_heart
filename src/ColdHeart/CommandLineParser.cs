@@ -21,6 +21,7 @@ public class CommandLineParser
         ["--angular-max-line-width"] = "Maximum line width for angular visualization (default: 8.0)",
         ["--angular-render-longest"] = "Render only top N longest paths",
         ["--angular-render-most-traversed"] = "Render only top N most traversed paths",
+        ["--angular-render-least-traversed"] = "Render only top N least traversed paths",
         ["--angular-render-random"] = "Render only N random paths from the entire set",
         ["--angular-draw-order"] = "Drawing order: tree (default) or least-to-most-traversed",
         ["--sequences"] = "Maximum number of sequences to calculate (default: 1000)",
@@ -70,6 +71,9 @@ public class CommandLineParser
                     break;
                 case "--angular-render-most-traversed":
                     options.AngularConfig.RenderMostTraversedPaths = ParsePositiveInt(args, ref i, "--angular-render-most-traversed", "most traversed paths count");
+                    break;
+                case "--angular-render-least-traversed":
+                    options.AngularConfig.RenderLeastTraversedPaths = ParsePositiveInt(args, ref i, "--angular-render-least-traversed", "least traversed paths count");
                     break;
                 case "--angular-render-random":
                     options.AngularConfig.RenderRandomPaths = ParsePositiveInt(args, ref i, "--angular-render-random", "random paths count");

@@ -131,12 +131,39 @@ public class AngularVisualizationConfigTests
     }
 
     [Test]
-    public void Validate_WithAllThreePathFilters_ThrowsInvalidOperationException()
+    public void Validate_WithLeastTraversedAndMostTraversed_ThrowsInvalidOperationException()
+    {
+        var config = new AngularVisualizationConfig
+        {
+            RenderMostTraversedPaths = 20,
+            RenderLeastTraversedPaths = 15
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => config.Validate());
+        Assert.That(ex.Message, Is.EqualTo("Only one path filtering option can be specified at a time."));
+    }
+
+    [Test]
+    public void Validate_WithLeastTraversedAndRandom_ThrowsInvalidOperationException()
+    {
+        var config = new AngularVisualizationConfig
+        {
+            RenderLeastTraversedPaths = 15,
+            RenderRandomPaths = 30
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => config.Validate());
+        Assert.That(ex.Message, Is.EqualTo("Only one path filtering option can be specified at a time."));
+    }
+
+    [Test]
+    public void Validate_WithAllFourPathFilters_ThrowsInvalidOperationException()
     {
         var config = new AngularVisualizationConfig
         {
             RenderLongestPaths = 10,
             RenderMostTraversedPaths = 20,
+            RenderLeastTraversedPaths = 15,
             RenderRandomPaths = 30
         };
 
@@ -205,12 +232,13 @@ public class AngularVisualizationConfigTests
     }
 
     [TestCaseSource(nameof(SinglePathFilterTestCases))]
-    public void Validate_WithSinglePathFilter_DoesNotThrow(Int32? longestPaths, Int32? mostTraversedPaths, Int32? randomPaths)
+    public void Validate_WithSinglePathFilter_DoesNotThrow(Int32? longestPaths, Int32? mostTraversedPaths, Int32? leastTraversedPaths, Int32? randomPaths)
     {
         var config = new AngularVisualizationConfig
         {
             RenderLongestPaths = longestPaths,
             RenderMostTraversedPaths = mostTraversedPaths,
+            RenderLeastTraversedPaths = leastTraversedPaths,
             RenderRandomPaths = randomPaths
         };
 
@@ -219,9 +247,10 @@ public class AngularVisualizationConfigTests
 
     private static System.Collections.IEnumerable SinglePathFilterTestCases()
     {
-        yield return new TestCaseData(10, null, null);
-        yield return new TestCaseData(null, 20, null);
-        yield return new TestCaseData(null, null, 30);
+        yield return new TestCaseData(10, null, null, null);
+        yield return new TestCaseData(null, 20, null, null);
+        yield return new TestCaseData(null, null, 15, null);
+        yield return new TestCaseData(null, null, null, 30);
     }
 
     [TestCaseSource(nameof(ValidBoundaryTestCases))]
