@@ -873,7 +873,7 @@ public class EnhancedPngExporter
         // Build filtered layout tree keeping only paths to selected nodes
         var filteredLayout = FilterLayoutTree(rootLayout, selectedValues);
 
-        // Build filtered metrics
+        // Build filtered metrics - PRESERVE original max values for proper color scaling
         var filteredPathLengths = metrics.PathLengths
             .Where(kvp => selectedValues.Contains(kvp.Key))
             .ToDictionary();
@@ -881,9 +881,12 @@ public class EnhancedPngExporter
             .Where(kvp => selectedValues.Contains(kvp.Key))
             .ToDictionary();
 
+        // CRITICAL FIX: Preserve original FurthestDistance and LongestPath for proper color scaling
+        // This ensures that colors remain consistent with the original tree, preventing blue nodes
+        // from appearing unexpectedly in the middle of what should be red paths
         var filteredMetrics = new TreeMetrics(
-            filteredPathLengths.Values.DefaultIfEmpty(0).Max(),
-            filteredPathLengths.Values.DefaultIfEmpty(0).Max(),
+            metrics.FurthestDistance,  // Keep original furthest distance
+            metrics.LongestPath,       // Keep original longest path
             filteredPathLengths,
             filteredTraversalCounts
         );
