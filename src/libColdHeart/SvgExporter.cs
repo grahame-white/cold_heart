@@ -7,12 +7,12 @@ namespace libColdHeart;
 
 public class SvgExporter
 {
-    private const Int32 DefaultFontSize = 12;
-    private const String DefaultFontFamily = "Arial, sans-serif";
-    private const String NodeFillColor = "#e6f3ff";
-    private const String NodeStrokeColor = "#0066cc";
-    private const String TextColor = "#000000";
-    private const String LineColor = "#666666";
+    private const Int32 DEFAULT_FONT_SIZE = 12;
+    private const String DEFAULT_FONT_FAMILY = "Arial, sans-serif";
+    private const String NODE_FILL_COLOR = "#e6f3ff";
+    private const String NODE_STROKE_COLOR = "#0066cc";
+    private const String TEXT_COLOR = "#000000";
+    private const String LINE_COLOR = "#666666";
 
     public String ExportToSvg(LayoutNode rootLayout)
     {
@@ -55,7 +55,7 @@ public class SvgExporter
 
             sb.AppendLine($"<line x1=\"{parentCenterX}\" y1=\"{parentCenterY}\" " +
                 $"x2=\"{childCenterX}\" y2=\"{childCenterY}\" " +
-                $"stroke=\"{LineColor}\" stroke-width=\"2\"/>");
+                $"stroke=\"{LINE_COLOR}\" stroke-width=\"2\"/>");
 
             // Recursively draw connections for children
             DrawConnections(sb, child);
@@ -67,15 +67,15 @@ public class SvgExporter
         // Draw node rectangle
         sb.AppendLine($"<rect x=\"{node.X}\" y=\"{node.Y}\" " +
             $"width=\"{node.Width}\" height=\"{node.Height}\" " +
-            $"fill=\"{NodeFillColor}\" stroke=\"{NodeStrokeColor}\" stroke-width=\"2\" rx=\"5\"/>");
+            $"fill=\"{NODE_FILL_COLOR}\" stroke=\"{NODE_STROKE_COLOR}\" stroke-width=\"2\" rx=\"5\"/>");
 
         // Draw node text (value)
         Single textX = node.X + (node.Width / 2.0f);
-        Single textY = node.Y + (node.Height / 2.0f) + (DefaultFontSize / 3.0f); // Adjust for baseline
+        Single textY = node.Y + (node.Height / 2.0f) + (DEFAULT_FONT_SIZE / 3.0f); // Adjust for baseline
 
         sb.AppendLine($"<text x=\"{textX}\" y=\"{textY}\" " +
-            $"font-family=\"{DefaultFontFamily}\" font-size=\"{DefaultFontSize}\" " +
-            $"fill=\"{TextColor}\" text-anchor=\"middle\">{node.Value}</text>");
+            $"font-family=\"{DEFAULT_FONT_FAMILY}\" font-size=\"{DEFAULT_FONT_SIZE}\" " +
+            $"fill=\"{TEXT_COLOR}\" text-anchor=\"middle\">{node.Value}</text>");
 
         // Recursively draw child nodes
         foreach (var child in node.Children)

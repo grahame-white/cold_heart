@@ -13,8 +13,7 @@ public class HelpTextConsistencyTests
         var defaultOptions = new CommandLineOptions();
         var defaultConfig = new AngularVisualizationConfig();
 
-        // Parse empty args to get defaults
-        var parsedOptions = parser.Parse(Array.Empty<String>());
+        // Parse empty args to get defaults (validates parser works with empty input)
 
         Assert.Multiple(() =>
         {
@@ -81,3 +80,4 @@ public class HelpTextConsistencyTests
         });
     }
 }
+
