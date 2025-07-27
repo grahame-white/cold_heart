@@ -152,7 +152,7 @@ public class EnhancedPngExporterTests
 
         try
         {
-            _pngExporter.ExportToPng(layout, metrics, tempFile, config, NodeStyle.Circle, 
+            _pngExporter.ExportToPng(layout, metrics, tempFile, config, NodeStyle.Circle,
                 message => progressMessages.Add(message));
 
             Assert.That(progressMessages.Count, Is.GreaterThan(0));
@@ -176,7 +176,7 @@ public class EnhancedPngExporterTests
 
         try
         {
-            _pngExporter.ExportToPng(layout, metrics, tempFile, config, NodeStyle.Circle, 
+            _pngExporter.ExportToPng(layout, metrics, tempFile, config, NodeStyle.Circle,
                 message => progressMessages.Add(message));
 
             Assert.That(progressMessages, Has.Some.Contains("Precomputing visual properties"));
@@ -453,7 +453,7 @@ public class EnhancedPngExporterTests
         var config = new AngularVisualizationConfig();
         var invalidFilePath = "/invalid/path/that/does/not/exist/test.png";
 
-        Assert.Throws<DirectoryNotFoundException>(() => 
+        Assert.Throws<DirectoryNotFoundException>(() =>
             _pngExporter.ExportToPng(layout, metrics, invalidFilePath, config));
     }
 

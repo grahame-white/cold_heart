@@ -474,7 +474,7 @@ public class CommandLineParserTests
     {
         var args = new[] {
             "--load", "input.json",
-            "--save", "output.json", 
+            "--save", "output.json",
             "--svg", "tree.svg",
             "--png", "tree.png",
             "--png-angular", "angular.png",

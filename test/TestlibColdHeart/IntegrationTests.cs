@@ -94,7 +94,7 @@ public class IntegrationTests
         var converter = new BigIntegerConverter();
         var options = new System.Text.Json.JsonSerializerOptions();
         options.Converters.Add(converter);
-        
+
         var largeNumbers = new[]
         {
             BigInteger.Parse("999999999999999999999999"),
@@ -106,7 +106,7 @@ public class IntegrationTests
         {
             var json = System.Text.Json.JsonSerializer.Serialize(number, options);
             var deserialized = System.Text.Json.JsonSerializer.Deserialize<BigInteger>(json, options);
-            
+
             Assert.That(deserialized, Is.EqualTo(number));
         }
     }
@@ -117,7 +117,7 @@ public class IntegrationTests
         var generator = new SequenceGenerator();
         var visualizer = new TreeMapVisualizer();
         var svgExporter = new SvgExporter();
-        
+
         var tempSvgFile = Path.GetTempFileName() + ".svg";
         var tempPngFile = Path.GetTempFileName() + ".png";
         var tempAngularFile = Path.GetTempFileName() + ".png";
@@ -148,9 +148,9 @@ public class IntegrationTests
                 Assert.That(File.Exists(tempSvgFile), Is.True);
                 Assert.That(File.Exists(tempPngFile), Is.True);
                 Assert.That(File.Exists(tempAngularFile), Is.True);
-                
+
                 Assert.That(new FileInfo(tempSvgFile).Length, Is.GreaterThan(0));
-                Assert.That(new FileInfo(tempPngFile).Length, Is.GreaterThan(0)); 
+                Assert.That(new FileInfo(tempPngFile).Length, Is.GreaterThan(0));
                 Assert.That(new FileInfo(tempAngularFile).Length, Is.GreaterThan(0));
             });
         }
@@ -167,7 +167,7 @@ public class IntegrationTests
     {
         var generator = new SequenceGenerator();
         var calculator = new AngularTreeLayoutCalculator();
-        
+
         for (BigInteger i = 2; i <= 8; i++)
         {
             generator.Add(i);
@@ -185,12 +185,12 @@ public class IntegrationTests
 
         // Layouts should be different with different angle configurations
         Assert.That(defaultLayout.Children.Count, Is.EqualTo(customLayout.Children.Count));
-        
+
         // At least some nodes should have different positions due to different angles
         var positionsDiffer = false;
         var defaultNodes = GetAllNodes(defaultLayout);
         var customNodes = GetAllNodes(customLayout);
-        
+
         for (Int32 i = 0; i < Math.Min(defaultNodes.Count, customNodes.Count); i++)
         {
             if (Math.Abs(defaultNodes[i].X - customNodes[i].X) > 0.1f ||
@@ -200,7 +200,7 @@ public class IntegrationTests
                 break;
             }
         }
-        
+
         Assert.That(positionsDiffer, Is.True, "Different angle configurations should produce different node positions");
     }
 

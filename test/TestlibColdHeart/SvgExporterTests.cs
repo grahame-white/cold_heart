@@ -208,7 +208,7 @@ public class SvgExporterTests
 
         var rectCount = CountOccurrences(svg, "<rect");
         var textCount = CountOccurrences(svg, "<text");
-        
+
         Assert.That(rectCount, Is.GreaterThanOrEqualTo(expectedMinimumNodes));
         Assert.That(textCount, Is.GreaterThanOrEqualTo(expectedMinimumNodes));
         Assert.That(rectCount, Is.EqualTo(textCount)); // Each rectangle should have corresponding text
