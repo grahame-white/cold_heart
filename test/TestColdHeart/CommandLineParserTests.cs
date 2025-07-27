@@ -503,4 +503,36 @@ public class CommandLineParserTests
             Assert.That(options.MaxSequences, Is.EqualTo(500));
         });
     }
+
+    [TestCase("0")]
+    [TestCase("-1")]
+    [TestCase("abc")]
+    public void Parse_WithInvalidAngularRenderLeastTraversedValue_ThrowsArgumentException(string invalidValue)
+    {
+        var args = new[] { "--angular-render-least-traversed", invalidValue };
+
+        var ex = Assert.Throws<ArgumentException>(() => _parser.Parse(args));
+        Assert.That(ex.Message, Does.Contain("least traversed paths count"));
+    }
+
+    [Test]
+    public void Parse_WithMissingAngularRenderLeastTraversedValue_ThrowsArgumentException()
+    {
+        var args = new[] { "--angular-render-least-traversed" };
+
+        var ex = Assert.Throws<ArgumentException>(() => _parser.Parse(args));
+        Assert.That(ex.Message, Does.Contain("--angular-render-least-traversed requires a positive integer"));
+    }
+
+    [TestCase(1)]
+    [TestCase(100)]
+    [TestCase(50000)]
+    public void Parse_WithValidAngularRenderLeastTraversedValues_SetsCorrectValue(int expectedValue)
+    {
+        var args = new[] { "--angular-render-least-traversed", expectedValue.ToString() };
+
+        var options = _parser.Parse(args);
+
+        Assert.That(options.AngularConfig.RenderLeastTraversedPaths, Is.EqualTo(expectedValue));
+    }
 }

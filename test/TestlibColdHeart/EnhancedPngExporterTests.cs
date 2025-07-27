@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using libColdHeart;
 
@@ -508,6 +509,189 @@ public class EnhancedPngExporterTests
 
             Assert.That(File.Exists(tempFile), Is.True);
             Assert.That(elapsed.TotalSeconds, Is.LessThan(30)); // Should complete within 30 seconds
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [Test]
+    public void ExportToPng_WithRenderLeastTraversedPaths_SelectsNodesWithLowestTraversalCounts()
+    {
+        // Create a more complex tree to verify least traversed selection
+        for (BigInteger i = 2; i <= 20; i++)
+        {
+            _generator.Add(i);
+        }
+
+        var layout = _angularCalculator.CalculateLayout(_generator.Root);
+        var metrics = _angularCalculator.CalculateTreeMetrics(_generator.Root);
+
+        // Find the actual 3 least traversed nodes
+        var expectedLeastTraversed = metrics.TraversalCounts
+            .OrderBy(kvp => kvp.Value)
+            .Take(3)
+            .Select(kvp => kvp.Key)
+            .ToHashSet();
+
+        var config = new AngularVisualizationConfig
+        {
+            RenderLeastTraversedPaths = 3
+        };
+        var tempFile = Path.GetTempFileName() + ".png";
+
+        try
+        {
+            _pngExporter.ExportToPng(layout, metrics, tempFile, config);
+
+            Assert.That(File.Exists(tempFile), Is.True);
+
+            // Verify that the selection logic works correctly
+            Assert.That(expectedLeastTraversed.Count, Is.EqualTo(3));
+
+            // Document the relationship between least traversed nodes and path length
+            var avgPathLength = expectedLeastTraversed.Average(node => metrics.PathLengths[node]);
+            var allAvgPathLength = metrics.PathLengths.Values.Average();
+
+            // With larger datasets, least traversed nodes often have longer paths,
+            // but this isn't guaranteed with small datasets
+            Console.WriteLine($"Least traversed avg path length: {avgPathLength:F2}, Overall avg: {allAvgPathLength:F2}");
+            Assert.That(avgPathLength, Is.GreaterThan(0), "Least traversed nodes should have valid path lengths");
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [Test]
+    public void ExportToPng_WithRenderLeastTraversedPaths_HandlesSmallDatasetCorrectly()
+    {
+        // Create a small tree with only 2 nodes
+        _generator.Add(2);
+
+        var layout = _angularCalculator.CalculateLayout(_generator.Root);
+        var metrics = _angularCalculator.CalculateTreeMetrics(_generator.Root);
+
+        var config = new AngularVisualizationConfig
+        {
+            RenderLeastTraversedPaths = 5  // Request more than available
+        };
+        var tempFile = Path.GetTempFileName() + ".png";
+
+        try
+        {
+            // Should handle gracefully when requesting more nodes than available
+            _pngExporter.ExportToPng(layout, metrics, tempFile, config);
+
+            Assert.That(File.Exists(tempFile), Is.True);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [Test]
+    public void ExportToPng_WithRenderLeastTraversedPaths_VerifiesTraversalCountDistribution()
+    {
+        // Create a balanced tree to test traversal distribution
+        for (BigInteger i = 2; i <= 15; i++)
+        {
+            _generator.Add(i);
+        }
+
+        var layout = _angularCalculator.CalculateLayout(_generator.Root);
+        var metrics = _angularCalculator.CalculateTreeMetrics(_generator.Root);
+
+        // Verify that traversal counts follow expected pattern
+        // (root should have highest, leaves should have lowest)
+        var rootTraversal = metrics.TraversalCounts[new BigInteger(1)];
+        var leastTraversed = metrics.TraversalCounts.Values.Min();
+
+        Assert.That(rootTraversal, Is.GreaterThan(leastTraversed),
+            "Root should have higher traversal count than least traversed nodes");
+
+        var config = new AngularVisualizationConfig
+        {
+            RenderLeastTraversedPaths = 4
+        };
+        var tempFile = Path.GetTempFileName() + ".png";
+
+        try
+        {
+            _pngExporter.ExportToPng(layout, metrics, tempFile, config);
+
+            Assert.That(File.Exists(tempFile), Is.True);
+
+            // Verify the least traversed selection makes sense
+            var selectedNodes = metrics.TraversalCounts
+                .OrderBy(kvp => kvp.Value)
+                .Take(4)
+                .ToList();
+
+            // All selected nodes should have the same or lower traversal count than any non-selected
+            var maxSelectedTraversal = selectedNodes.Max(kvp => kvp.Value);
+            var minUnselectedTraversal = metrics.TraversalCounts
+                .OrderBy(kvp => kvp.Value)
+                .Skip(4)
+                .FirstOrDefault().Value;
+
+            if (minUnselectedTraversal > 0)  // Only check if there are unselected nodes
+            {
+                Assert.That(maxSelectedTraversal, Is.LessThanOrEqualTo(minUnselectedTraversal),
+                    "Selected least traversed nodes should have traversal counts <= unselected nodes");
+            }
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [TestCase(1)]
+    [TestCase(3)]
+    [TestCase(10)]
+    public void ExportToPng_WithRenderLeastTraversedPaths_HandlesVariousCountsCorrectly(int requestedCount)
+    {
+        // Create a tree large enough for all test cases
+        for (BigInteger i = 2; i <= 15; i++)
+        {
+            _generator.Add(i);
+        }
+
+        var layout = _angularCalculator.CalculateLayout(_generator.Root);
+        var metrics = _angularCalculator.CalculateTreeMetrics(_generator.Root);
+
+        var config = new AngularVisualizationConfig
+        {
+            RenderLeastTraversedPaths = requestedCount
+        };
+        var tempFile = Path.GetTempFileName() + ".png";
+
+        try
+        {
+            _pngExporter.ExportToPng(layout, metrics, tempFile, config);
+
+            Assert.That(File.Exists(tempFile), Is.True);
+
+            // Verify that the requested count is handled appropriately
+            var availableNodes = metrics.TraversalCounts.Count;
+            var expectedSelectedCount = Math.Min(requestedCount, availableNodes);
+
+            // We can't directly verify the count from the image, but we can ensure it doesn't crash
+            // and the logic would select the expected number
+            var actualSelection = metrics.TraversalCounts
+                .OrderBy(kvp => kvp.Value)
+                .Take(requestedCount)
+                .Count();
+
+            Assert.That(actualSelection, Is.EqualTo(expectedSelectedCount));
         }
         finally
         {

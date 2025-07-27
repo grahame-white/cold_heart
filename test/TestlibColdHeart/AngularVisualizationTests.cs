@@ -214,6 +214,106 @@ public class AngularVisualizationTests
         }
     }
 
+    [Test]
+    public void CalculateTreeMetrics_LeastTraversedPathsCharacteristics_DocumentsBehavior()
+    {
+        // Create a larger tree to demonstrate the traversal/path length relationship
+        for (BigInteger i = 2; i <= 31; i++)
+        {
+            _generator.Add(i);
+        }
+
+        var metrics = _angularCalculator.CalculateTreeMetrics(_generator.Root);
+
+        // Get the 5 least traversed nodes
+        var leastTraversedNodes = metrics.TraversalCounts
+            .OrderBy(kvp => kvp.Value)
+            .Take(5)
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        // Get their corresponding path lengths
+        var leastTraversedPathLengths = leastTraversedNodes
+            .Select(node => metrics.PathLengths[node])
+            .ToList();
+
+        // Calculate average path length for all nodes and least traversed nodes
+        var overallAveragePathLength = metrics.PathLengths.Values.Average();
+        var leastTraversedAveragePathLength = leastTraversedPathLengths.Average();
+
+        // Document current behavior: least traversed nodes tend to have longer paths
+        // This is expected because nodes farther from root are visited less frequently
+        Assert.That(leastTraversedAveragePathLength, Is.GreaterThanOrEqualTo(overallAveragePathLength),
+            "Least traversed nodes typically have longer paths than average - this is expected behavior");
+
+        // Verify that traversal counts decrease as we go farther from root
+        var rootTraversal = metrics.TraversalCounts[new BigInteger(1)];
+        var minTraversal = leastTraversedNodes.Min(node => metrics.TraversalCounts[node]);
+
+        Assert.That(rootTraversal, Is.GreaterThan(minTraversal),
+            "Root should have higher traversal count than the least traversed nodes");
+
+        // Ensure we actually found some least traversed nodes
+        Assert.That(leastTraversedNodes.Count, Is.EqualTo(5));
+        Assert.That(leastTraversedPathLengths.All(length => length >= 0), Is.True);
+
+        Console.WriteLine($"Least traversed nodes analysis:");
+        Console.WriteLine($"  Overall average path length: {overallAveragePathLength:F2}");
+        Console.WriteLine($"  Least traversed average path length: {leastTraversedAveragePathLength:F2}");
+        Console.WriteLine($"  Root traversal count: {rootTraversal}");
+        Console.WriteLine($"  Min traversal count: {minTraversal}");
+
+        foreach (var node in leastTraversedNodes)
+        {
+            Console.WriteLine($"  Node {node}: Path length = {metrics.PathLengths[node]}, Traversal count = {metrics.TraversalCounts[node]}");
+        }
+    }
+
+    [Test]
+    public void CalculateTreeMetrics_TraversalCountDistribution_FollowsExpectedPattern()
+    {
+        // Create a medium-sized tree
+        for (BigInteger i = 2; i <= 20; i++)
+        {
+            _generator.Add(i);
+        }
+
+        var metrics = _angularCalculator.CalculateTreeMetrics(_generator.Root);
+
+        // Group nodes by path length and check traversal patterns
+        var nodesByPathLength = metrics.PathLengths
+            .GroupBy(kvp => kvp.Value)
+            .ToDictionary(g => g.Key, g => g.Select(kvp => kvp.Key).ToList());
+
+        // For each path length level, verify traversal counts make sense
+        foreach (var pathLengthGroup in nodesByPathLength.OrderBy(kvp => kvp.Key))
+        {
+            var pathLength = pathLengthGroup.Key;
+            var nodesAtThisLevel = pathLengthGroup.Value;
+
+            if (pathLength == 0)
+            {
+                // Root node should have highest traversal count
+                Assert.That(nodesAtThisLevel.Count, Is.EqualTo(1));
+                var rootTraversal = metrics.TraversalCounts[nodesAtThisLevel[0]];
+                var maxTraversal = metrics.TraversalCounts.Values.Max();
+                Assert.That(rootTraversal, Is.EqualTo(maxTraversal));
+            }
+            else
+            {
+                // Nodes at greater path lengths should generally have lower traversal counts
+                var avgTraversalAtThisLevel = nodesAtThisLevel.Average(node => metrics.TraversalCounts[node]);
+
+                // This documents expected behavior without being too strict
+                Assert.That(avgTraversalAtThisLevel, Is.GreaterThan(0),
+                    $"Nodes at path length {pathLength} should have positive traversal counts");
+            }
+
+            Console.WriteLine($"Path length {pathLength}: {nodesAtThisLevel.Count} nodes, " +
+                            $"avg traversal: {nodesAtThisLevel.Average(node => metrics.TraversalCounts[node]):F1}");
+        }
+    }
+
     private List<LayoutNode> GetAllLayoutNodes(LayoutNode node)
     {
         var nodes = new List<LayoutNode> { node };
