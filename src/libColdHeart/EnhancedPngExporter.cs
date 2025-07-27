@@ -686,7 +686,7 @@ public class EnhancedPngExporter
         var traversalCount = metrics.TraversalCounts.GetValueOrDefault(nodeValue, 1);
         var maxTraversalCount = metrics.TraversalCounts.Values.DefaultIfEmpty(1).Max();
 
-        if (maxTraversalCount <= 1 || config.ThicknessImpact == 0)
+        if (maxTraversalCount <= 1 || Math.Abs(config.ThicknessImpact) < 1e-6f)
         {
             return BASE_LINE_STROKE_WIDTH;
         }
@@ -707,7 +707,7 @@ public class EnhancedPngExporter
         const Single baseRadius = 3.0f;
         const Single maxRadius = 8.0f;
 
-        if (maxTraversalCount <= 1 || config.ThicknessImpact == 0)
+        if (maxTraversalCount <= 1 || Math.Abs(config.ThicknessImpact) < 1e-6f)
         {
             return baseRadius;
         }
