@@ -15,253 +15,39 @@ internal class Program
     {
         try
         {
-            SequenceGenerator generator;
-            String? loadFile = null;
-            String? saveFile = null;
-            String? svgFile = null;
-            String? pngFile = null;
-            String? angularPngFile = null;
-            NodeStyle angularNodeStyle = NodeStyle.Circle; // Default to circle nodes
-            var angularConfig = new AngularVisualizationConfig();
+            var parser = new CommandLineParser();
+            CommandLineOptions options;
 
-            // Parse command line arguments
-            for (Int32 i = 0; i < args.Length; i++)
+            try
             {
-                switch (args[i])
-                {
-                    case "--load":
-                        if (i + 1 < args.Length)
-                        {
-                            loadFile = args[++i];
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --load requires a filename");
-                            return 1;
-                        }
-                        break;
-                    case "--save":
-                        if (i + 1 < args.Length)
-                        {
-                            saveFile = args[++i];
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --save requires a filename");
-                            return 1;
-                        }
-                        break;
-                    case "--svg":
-                        if (i + 1 < args.Length)
-                        {
-                            svgFile = args[++i];
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --svg requires a filename");
-                            return 1;
-                        }
-                        break;
-                    case "--png":
-                        if (i + 1 < args.Length)
-                        {
-                            pngFile = args[++i];
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --png requires a filename");
-                            return 1;
-                        }
-                        break;
-                    case "--png-angular":
-                        if (i + 1 < args.Length)
-                        {
-                            angularPngFile = args[++i];
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --png-angular requires a filename");
-                            return 1;
-                        }
-                        break;
-                    case "--angular-node-style":
-                        if (i + 1 < args.Length)
-                        {
-                            var styleArg = args[++i].ToLowerInvariant();
-                            switch (styleArg)
-                            {
-                                case "circle":
-                                    angularNodeStyle = NodeStyle.Circle;
-                                    break;
-                                case "rectangle":
-                                    angularNodeStyle = NodeStyle.Rectangle;
-                                    break;
-                                default:
-                                    Console.WriteLine($"Error: Invalid node style '{args[i]}'. Valid options are: circle, rectangle");
-                                    return 1;
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --angular-node-style requires a style (circle or rectangle)");
-                            return 1;
-                        }
-                        break;
-                    case "--angular-left-turn":
-                        if (i + 1 < args.Length)
-                        {
-                            if (Single.TryParse(args[++i], out var leftTurn))
-                            {
-                                angularConfig.LeftTurnAngle = leftTurn;
-                            }
-                            else
-                            {
-                                Console.WriteLine($"Error: Invalid left turn angle '{args[i]}'. Must be a number.");
-                                return 1;
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --angular-left-turn requires an angle value");
-                            return 1;
-                        }
-                        break;
-                    case "--angular-right-turn":
-                        if (i + 1 < args.Length)
-                        {
-                            if (Single.TryParse(args[++i], out var rightTurn))
-                            {
-                                angularConfig.RightTurnAngle = rightTurn;
-                            }
-                            else
-                            {
-                                Console.WriteLine($"Error: Invalid right turn angle '{args[i]}'. Must be a number.");
-                                return 1;
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --angular-right-turn requires an angle value");
-                            return 1;
-                        }
-                        break;
-                    case "--angular-thickness-impact":
-                        if (i + 1 < args.Length)
-                        {
-                            if (Single.TryParse(args[++i], out var thicknessImpact))
-                            {
-                                angularConfig.ThicknessImpact = thicknessImpact;
-                            }
-                            else
-                            {
-                                Console.WriteLine($"Error: Invalid thickness impact '{args[i]}'. Must be a number.");
-                                return 1;
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --angular-thickness-impact requires a numeric value");
-                            return 1;
-                        }
-                        break;
-                    case "--angular-color-impact":
-                        if (i + 1 < args.Length)
-                        {
-                            if (Single.TryParse(args[++i], out var colorImpact))
-                            {
-                                angularConfig.ColorImpact = colorImpact;
-                            }
-                            else
-                            {
-                                Console.WriteLine($"Error: Invalid color impact '{args[i]}'. Must be a number.");
-                                return 1;
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --angular-color-impact requires a numeric value");
-                            return 1;
-                        }
-                        break;
-                    case "--angular-render-longest":
-                        if (i + 1 < args.Length)
-                        {
-                            if (Int32.TryParse(args[++i], out var longestCount) && longestCount > 0)
-                            {
-                                angularConfig.RenderLongestPaths = longestCount;
-                            }
-                            else
-                            {
-                                Console.WriteLine($"Error: Invalid longest paths count '{args[i]}'. Must be a positive integer.");
-                                return 1;
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --angular-render-longest requires a positive integer");
-                            return 1;
-                        }
-                        break;
-                    case "--angular-render-most-traversed":
-                        if (i + 1 < args.Length)
-                        {
-                            if (Int32.TryParse(args[++i], out var traversedCount) && traversedCount > 0)
-                            {
-                                angularConfig.RenderMostTraversedPaths = traversedCount;
-                            }
-                            else
-                            {
-                                Console.WriteLine($"Error: Invalid most traversed paths count '{args[i]}'. Must be a positive integer.");
-                                return 1;
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --angular-render-most-traversed requires a positive integer");
-                            return 1;
-                        }
-                        break;
-                    case "--angular-render-random":
-                        if (i + 1 < args.Length)
-                        {
-                            if (Int32.TryParse(args[++i], out var randomCount) && randomCount > 0)
-                            {
-                                angularConfig.RenderRandomPaths = randomCount;
-                            }
-                            else
-                            {
-                                Console.WriteLine($"Error: Invalid random paths count '{args[i]}'. Must be a positive integer.");
-                                return 1;
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: --angular-render-random requires a positive integer");
-                            return 1;
-                        }
-                        break;
-                    case "--help":
-                    case "-h":
-                        PrintUsage();
-                        return 0;
-                    default:
-                        Console.WriteLine($"Error: Unknown argument '{args[i]}'");
-                        PrintUsage();
-                        return 1;
-                }
+                options = parser.Parse(args);
             }
-
-            // Load from file if specified
-            if (loadFile != null && !File.Exists(loadFile))
+            catch (ArgumentException ex)
             {
-                Console.WriteLine($"Error: File '{loadFile}' does not exist");
+                Console.WriteLine(ex.Message);
+                parser.PrintUsage();
                 return 1;
             }
 
-            if (loadFile != null)
+            if (options.ShowHelp)
             {
-                Console.WriteLine($"Loading sequence from '{loadFile}'...");
-                generator = await SequenceGenerator.LoadFromFileAsync(loadFile);
+                parser.PrintUsage();
+                return 0;
+            }
+
+            SequenceGenerator generator;
+
+            // Load from file if specified
+            if (options.LoadFile != null && !File.Exists(options.LoadFile))
+            {
+                Console.WriteLine($"Error: File '{options.LoadFile}' does not exist");
+                return 1;
+            }
+
+            if (options.LoadFile != null)
+            {
+                Console.WriteLine($"Loading sequence from '{options.LoadFile}'...");
+                generator = await SequenceGenerator.LoadFromFileAsync(options.LoadFile);
                 Console.WriteLine("Sequence loaded successfully.");
             }
             else
@@ -277,22 +63,22 @@ internal class Program
             }
 
             // Save to file if specified
-            if (saveFile != null)
+            if (options.SaveFile != null)
             {
-                Console.WriteLine($"Saving sequence to '{saveFile}'...");
-                await generator.SaveToFileAsync(saveFile);
+                Console.WriteLine($"Saving sequence to '{options.SaveFile}'...");
+                await generator.SaveToFileAsync(options.SaveFile);
                 Console.WriteLine("Sequence saved successfully.");
             }
 
             // Export visualizations if specified
-            if (svgFile != null || pngFile != null || angularPngFile != null)
+            if (options.SvgFile != null || options.PngFile != null || options.AngularPngFile != null)
             {
                 // Validate angular configuration if angular PNG is requested
-                if (angularPngFile != null)
+                if (options.AngularPngFile != null)
                 {
                     try
                     {
-                        angularConfig.Validate();
+                        options.AngularConfig.Validate();
                     }
                     catch (Exception ex)
                     {
@@ -303,24 +89,24 @@ internal class Program
 
                 var visualizer = new TreeMapVisualizer();
 
-                if (svgFile != null)
+                if (options.SvgFile != null)
                 {
-                    Console.WriteLine($"Exporting tree visualization to SVG '{svgFile}'...");
-                    await visualizer.ExportToSvgAsync(generator.Root, svgFile);
+                    Console.WriteLine($"Exporting tree visualization to SVG '{options.SvgFile}'...");
+                    await visualizer.ExportToSvgAsync(generator.Root, options.SvgFile);
                     Console.WriteLine("SVG export completed successfully.");
                 }
 
-                if (pngFile != null)
+                if (options.PngFile != null)
                 {
-                    Console.WriteLine($"Exporting tree visualization to PNG '{pngFile}'...");
-                    visualizer.ExportToPng(generator.Root, pngFile);
+                    Console.WriteLine($"Exporting tree visualization to PNG '{options.PngFile}'...");
+                    visualizer.ExportToPng(generator.Root, options.PngFile);
                     Console.WriteLine("PNG export completed successfully.");
                 }
 
-                if (angularPngFile != null)
+                if (options.AngularPngFile != null)
                 {
-                    Console.WriteLine($"Exporting angular tree visualization to PNG '{angularPngFile}'...");
-                    visualizer.ExportToAngularPng(generator.Root, angularPngFile, angularConfig, angularNodeStyle, progress =>
+                    Console.WriteLine($"Exporting angular tree visualization to PNG '{options.AngularPngFile}'...");
+                    visualizer.ExportToAngularPng(generator.Root, options.AngularPngFile, options.AngularConfig, options.AngularNodeStyle, progress =>
                     {
                         Console.WriteLine($"  {progress}");
                     });
@@ -355,37 +141,5 @@ internal class Program
             Console.WriteLine($"Error: I/O operation failed - {ex.Message}");
             return 1;
         }
-    }
-
-    private static void PrintUsage()
-    {
-        Console.WriteLine("ColdHeart - Collatz sequence generator and serializer");
-        Console.WriteLine();
-        Console.WriteLine("Usage:");
-        Console.WriteLine("  ColdHeart [options]");
-        Console.WriteLine();
-        Console.WriteLine("Options:");
-        Console.WriteLine("  --load <filename>         Load a previously serialized sequence from file");
-        Console.WriteLine("  --save <filename>         Save the generated sequence to file");
-        Console.WriteLine("  --svg <filename>          Export tree visualization to SVG format");
-        Console.WriteLine("  --png <filename>          Export tree visualization to PNG format (traditional layout)");
-        Console.WriteLine("  --png-angular <filename>  Export tree visualization to PNG format (angular layout)");
-        Console.WriteLine("  --angular-node-style <style>  Node style for angular PNG (circle or rectangle, default: circle)");
-        Console.WriteLine("  --angular-left-turn <angle>   Left turn angle for even nodes (default: -8.65)");
-        Console.WriteLine("  --angular-right-turn <angle>  Right turn angle for odd nodes (default: 16.0)");
-        Console.WriteLine("  --angular-thickness-impact <factor>  Impact of traversals on line thickness (default: 1.0, 0 = no impact)");
-        Console.WriteLine("  --angular-color-impact <factor>      Impact of path length on color (default: 1.0, higher = greater change)");
-        Console.WriteLine("  --angular-render-longest <count>     Render only top N longest paths");
-        Console.WriteLine("  --angular-render-most-traversed <count>  Render only top N most traversed paths");
-        Console.WriteLine("  --angular-render-random <count>      Render only N random paths from the entire set");
-        Console.WriteLine("  --help, -h                Show this help message");
-        Console.WriteLine();
-        Console.WriteLine("Examples:");
-        Console.WriteLine("  ColdHeart --save sequence.json");
-        Console.WriteLine("  ColdHeart --load sequence.json --svg tree.svg");
-        Console.WriteLine("  ColdHeart --svg tree.svg --png tree.png");
-        Console.WriteLine("  ColdHeart --png-angular angular_tree.png");
-        Console.WriteLine("  ColdHeart --png-angular angular_tree.png --angular-node-style rectangle");
-        Console.WriteLine("  ColdHeart --load old.json --save new.json --svg tree.svg");
     }
 }

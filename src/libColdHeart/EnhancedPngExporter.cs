@@ -109,7 +109,7 @@ public class EnhancedPngExporter
 
         // Draw connections first (so they appear behind nodes)
         progressCallback?.Invoke("Drawing connections...");
-        DrawEnhancedConnections(canvas, filteredLayout, filteredMetrics, progressCallback);
+        DrawEnhancedConnections(canvas, filteredLayout, filteredMetrics, config, progressCallback);
 
         // Draw nodes
         progressCallback?.Invoke("Drawing nodes...");
@@ -170,21 +170,21 @@ public class EnhancedPngExporter
         });
     }
 
-    private void DrawEnhancedConnections(SKCanvas canvas, LayoutNode node, TreeMetrics metrics, Action<String>? progressCallback = null)
+    private void DrawEnhancedConnections(SKCanvas canvas, LayoutNode node, TreeMetrics metrics, AngularVisualizationConfig config, Action<String>? progressCallback = null)
     {
         if (progressCallback != null)
         {
             var totalNodes = CountNodes(node);
             var processedNodes = 0;
-            DrawEnhancedConnectionsBatched(canvas, node, progressCallback, totalNodes, ref processedNodes);
+            DrawEnhancedConnectionsBatched(canvas, node, metrics, config, progressCallback, totalNodes, ref processedNodes);
         }
         else
         {
-            DrawEnhancedConnectionsOptimized(canvas, node);
+            DrawEnhancedConnectionsOptimized(canvas, node, metrics, config);
         }
     }
 
-    private void DrawEnhancedConnectionsOptimized(SKCanvas canvas, LayoutNode node)
+    private void DrawEnhancedConnectionsOptimized(SKCanvas canvas, LayoutNode node, TreeMetrics metrics, AngularVisualizationConfig config)
     {
         // Use a single reusable paint object to minimize allocations
         using var paint = new SKPaint
@@ -193,7 +193,14 @@ public class EnhancedPngExporter
             IsAntialias = true
         };
 
-        DrawConnectionsRecursiveOptimized(canvas, node, paint);
+        if (config.DrawingOrder == DrawingOrder.LeastToMostTraversed)
+        {
+            DrawConnectionsOrderedByTraversal(canvas, node, metrics, paint);
+        }
+        else
+        {
+            DrawConnectionsRecursiveOptimized(canvas, node, paint);
+        }
     }
 
     private void DrawConnectionsRecursiveOptimized(SKCanvas canvas, LayoutNode node, SKPaint paint)
@@ -233,10 +240,18 @@ public class EnhancedPngExporter
         DrawConnectionsWithProgressRecursive(canvas, node, paint, progressCallback, totalNodes, ref processedNodes);
     }
 
-    private void DrawEnhancedConnectionsBatched(SKCanvas canvas, LayoutNode node, Action<String> progressCallback, Int32 totalNodes, ref Int32 processedNodes)
+    private void DrawEnhancedConnectionsBatched(SKCanvas canvas, LayoutNode node, TreeMetrics metrics, AngularVisualizationConfig config, Action<String> progressCallback, Int32 totalNodes, ref Int32 processedNodes)
     {
         // Collect all connections and group by similar properties for batch drawing
         var connections = CollectAllConnections(node);
+
+        // Sort connections by traversal frequency if requested
+        if (config.DrawingOrder == DrawingOrder.LeastToMostTraversed)
+        {
+            connections = connections
+                .OrderBy(c => metrics.TraversalCounts.GetValueOrDefault(c.Child.Value, 0))
+                .ToList();
+        }
 
         // Group connections by line width and color for more efficient drawing
         var groupedConnections = connections
@@ -281,6 +296,27 @@ public class EnhancedPngExporter
         CollectConnectionsRecursive(node, connections);
 
         return connections;
+    }
+
+    private void DrawConnectionsOrderedByTraversal(SKCanvas canvas, LayoutNode node, TreeMetrics metrics, SKPaint paint)
+    {
+        // Collect all connections first
+        var connections = CollectAllConnections(node);
+
+        // Sort by traversal frequency (least to most)
+        var sortedConnections = connections
+            .OrderBy(c => metrics.TraversalCounts.GetValueOrDefault(c.Child.Value, 0))
+            .ToArray();
+
+        // Draw connections in order
+        foreach (var connection in sortedConnections)
+        {
+            // Use cached values for color and width
+            paint.Color = _lineColorCache[connection.Child.Value];
+            paint.StrokeWidth = _lineWidthCache[connection.Child.Value];
+
+            canvas.DrawLine(connection.StartX, connection.StartY, connection.EndX, connection.EndY, paint);
+        }
     }
 
     private void CollectConnectionsRecursive(LayoutNode node, List<(LayoutNode, LayoutNode, Single, Single, Single, Single)> connections)
