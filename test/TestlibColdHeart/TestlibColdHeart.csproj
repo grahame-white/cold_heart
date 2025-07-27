@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\libColdHeart\libColdHeart.csproj" />
+    <ProjectReference Include="..\..\src\ColdHeart\ColdHeart.csproj" />
   </ItemGroup>
 
   <ItemGroup>
