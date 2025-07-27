@@ -2,7 +2,7 @@ using System;
 using ColdHeart;
 using libColdHeart;
 
-namespace TestlibColdHeart;
+namespace TestColdHeart;
 
 public class CommandLineOptionsTests
 {
