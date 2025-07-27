@@ -9,17 +9,14 @@ namespace libColdHeart;
 
 public class EnhancedPngExporter
 {
-    private const Single DefaultFontSize = 12.0f;
-    private const Single BaseNodeStrokeWidth = 1.0f;
     private const Single BaseLineStrokeWidth = 1.0f;
     private const Single MaxStrokeWidth = 8.0f;
-    private const Single CornerRadius = 5.0f;
 
     private static readonly SKColor BackgroundColor = SKColor.Parse("#ffffff"); // White background as required
-    private static readonly SKColor TextColor = SKColor.Parse("#000000");
 
-    public void ExportToPng(LayoutNode rootLayout, TreeMetrics metrics, String filePath)
+    public void ExportToPng(LayoutNode rootLayout, TreeMetrics metrics, String filePath, Action<String>? progressCallback = null)
     {
+        progressCallback?.Invoke("Calculating image bounds...");
         var bounds = CalculateBounds(rootLayout);
 
         // Add margins
@@ -59,6 +56,7 @@ public class EnhancedPngExporter
             throw new InvalidOperationException($"Invalid image dimensions after scaling: {imageWidth}x{imageHeight}");
         }
 
+        progressCallback?.Invoke("Creating image surface...");
         using var surface = SKSurface.Create(new SKImageInfo(imageWidth, imageHeight));
         if (surface == null)
         {
@@ -76,14 +74,17 @@ public class EnhancedPngExporter
         canvas.Translate(margin - bounds.MinX, margin - bounds.MinY);
 
         // Draw connections first (so they appear behind nodes)
+        progressCallback?.Invoke("Drawing connections...");
         DrawEnhancedConnections(canvas, rootLayout, metrics);
 
         // Draw nodes
+        progressCallback?.Invoke("Drawing nodes...");
         DrawEnhancedNodes(canvas, rootLayout, metrics);
 
         canvas.Restore();
 
         // Save to file
+        progressCallback?.Invoke("Saving image to file...");
         using var image = surface.Snapshot();
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         using var stream = File.OpenWrite(filePath);
@@ -122,46 +123,32 @@ public class EnhancedPngExporter
     private void DrawEnhancedNodes(SKCanvas canvas, LayoutNode node, TreeMetrics metrics)
     {
         // Calculate node properties based on path length and traversal frequency
-        var nodeFillColor = CalculateNodeFillColor(node.Value, metrics);
-        var nodeStrokeColor = CalculateNodeStrokeColor(node.Value, metrics);
-        var nodeStrokeWidth = CalculateNodeStrokeWidth(node.Value, metrics);
+        var nodeColor = CalculateNodeColor(node.Value, metrics);
+        var nodeRadius = CalculateNodeRadius(node.Value, metrics);
 
-        // Draw node rectangle
-        using var fillPaint = new SKPaint
+        // Draw simplified node as a circle at the center of the node area
+        using var paint = new SKPaint
         {
-            Color = nodeFillColor,
+            Color = nodeColor,
             Style = SKPaintStyle.Fill,
             IsAntialias = true
         };
 
-        using var strokePaint = new SKPaint
+        Single centerX = node.X + (node.Width / 2.0f);
+        Single centerY = node.Y + (node.Height / 2.0f);
+
+        canvas.DrawCircle(centerX, centerY, nodeRadius, paint);
+
+        // Draw a subtle border around the circle for better visibility
+        using var borderPaint = new SKPaint
         {
-            Color = nodeStrokeColor,
-            StrokeWidth = nodeStrokeWidth,
+            Color = nodeColor.WithAlpha(180), // Slightly transparent border
             Style = SKPaintStyle.Stroke,
+            StrokeWidth = 1.0f,
             IsAntialias = true
         };
 
-        var rect = new SKRect(node.X, node.Y, node.X + node.Width, node.Y + node.Height);
-        using var roundRect = new SKRoundRect(rect, CornerRadius, CornerRadius);
-
-        canvas.DrawRoundRect(roundRect, fillPaint);
-        canvas.DrawRoundRect(roundRect, strokePaint);
-
-        // Draw node text (value)
-        using var textPaint = new SKPaint
-        {
-            Color = TextColor,
-            TextSize = DefaultFontSize,
-            IsAntialias = true,
-            TextAlign = SKTextAlign.Center,
-            Typeface = SKTypeface.FromFamilyName("Arial")
-        };
-
-        Single textX = node.X + (node.Width / 2.0f);
-        Single textY = node.Y + (node.Height / 2.0f) + (DefaultFontSize / 3.0f);
-
-        canvas.DrawText(node.Value.ToString(), textX, textY, textPaint);
+        canvas.DrawCircle(centerX, centerY, nodeRadius, borderPaint);
 
         // Recursively draw child nodes
         foreach (var child in node.Children)
@@ -210,53 +197,47 @@ public class EnhancedPngExporter
         return BaseLineStrokeWidth + (normalizedThickness * (MaxStrokeWidth - BaseLineStrokeWidth));
     }
 
-    private SKColor CalculateNodeFillColor(BigInteger nodeValue, TreeMetrics metrics)
+    private SKColor CalculateNodeColor(BigInteger nodeValue, TreeMetrics metrics)
     {
-        // Similar to line color but lighter for fill
+        // Color depends on log(longest path) - same as line color but slightly different for nodes
         var pathLength = metrics.PathLengths.GetValueOrDefault(nodeValue, 0);
         var maxPathLength = metrics.LongestPath;
 
         if (maxPathLength <= 1)
         {
-            return SKColor.Parse("#e6f3ff"); // Light blue default
+            return SKColor.Parse("#4a90e2"); // Default blue
         }
 
+        // Use logarithmic scaling for color intensity
         Single logPathLength = (Single)Math.Log(pathLength + 1);
         Single logMaxPathLength = (Single)Math.Log(maxPathLength + 1);
         Single normalizedIntensity = logPathLength / logMaxPathLength;
 
-        // Lighter colors for fill
-        Byte red = (Byte)(128 + normalizedIntensity * 127);
-        Byte blue = (Byte)(128 + (1.0f - normalizedIntensity) * 127);
-        Byte green = 192;
+        // Interpolate between blue (low intensity) and red (high intensity)
+        Byte red = (Byte)(normalizedIntensity * 255);
+        Byte blue = (Byte)((1.0f - normalizedIntensity) * 255);
+        Byte green = 80; // Keep some green for visual distinction
 
         return new SKColor(red, green, blue);
     }
 
-    private SKColor CalculateNodeStrokeColor(BigInteger nodeValue, TreeMetrics metrics)
+    private Single CalculateNodeRadius(BigInteger nodeValue, TreeMetrics metrics)
     {
-        // Darker version of the fill color
-        var fillColor = CalculateNodeFillColor(nodeValue, metrics);
-        return new SKColor(
-            (Byte)(fillColor.Red * 0.7f),
-            (Byte)(fillColor.Green * 0.7f),
-            (Byte)(fillColor.Blue * 0.7f)
-        );
-    }
-
-    private Single CalculateNodeStrokeWidth(BigInteger nodeValue, TreeMetrics metrics)
-    {
-        // Similar to line width calculation
+        // Radius depends on traversal frequency
         var traversalCount = metrics.TraversalCounts.GetValueOrDefault(nodeValue, 1);
         var maxTraversalCount = metrics.TraversalCounts.Values.Max();
 
+        const Single baseRadius = 3.0f;
+        const Single maxRadius = 8.0f;
+
         if (maxTraversalCount <= 1)
         {
-            return BaseNodeStrokeWidth;
+            return baseRadius;
         }
 
-        Single normalizedThickness = (Single)traversalCount / maxTraversalCount;
-        return BaseNodeStrokeWidth + (normalizedThickness * (MaxStrokeWidth - BaseNodeStrokeWidth));
+        // Scale radius based on traversal frequency
+        Single normalizedSize = (Single)traversalCount / maxTraversalCount;
+        return baseRadius + (normalizedSize * (maxRadius - baseRadius));
     }
 
     private (Single MinX, Single MinY, Single Width, Single Height) CalculateBounds(LayoutNode rootLayout)

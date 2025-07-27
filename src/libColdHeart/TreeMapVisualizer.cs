@@ -44,11 +44,15 @@ public class TreeMapVisualizer
         _pngExporter.ExportToPng(layout, filePath);
     }
 
-    public void ExportToAngularPng(TreeNode root, String filePath)
+    public void ExportToAngularPng(TreeNode root, String filePath, Action<String>? progressCallback = null)
     {
+        progressCallback?.Invoke("Calculating angular layout...");
         var layout = CalculateAngularLayout(root);
+
+        progressCallback?.Invoke("Calculating tree metrics...");
         var metrics = _angularLayoutCalculator.CalculateTreeMetrics(root);
-        _enhancedPngExporter.ExportToPng(layout, metrics, filePath);
+
+        _enhancedPngExporter.ExportToPng(layout, metrics, filePath, progressCallback);
     }
 
     public async Task ExportToSvgAsync(LayoutNode layout, String filePath)
@@ -63,8 +67,8 @@ public class TreeMapVisualizer
         _pngExporter.ExportToPng(layout, filePath);
     }
 
-    public void ExportEnhancedToPng(LayoutNode layout, TreeMetrics metrics, String filePath)
+    public void ExportEnhancedToPng(LayoutNode layout, TreeMetrics metrics, String filePath, Action<String>? progressCallback = null)
     {
-        _enhancedPngExporter.ExportToPng(layout, metrics, filePath);
+        _enhancedPngExporter.ExportToPng(layout, metrics, filePath, progressCallback);
     }
 }

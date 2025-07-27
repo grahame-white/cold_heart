@@ -148,7 +148,10 @@ internal class Program
                 if (angularPngFile != null)
                 {
                     Console.WriteLine($"Exporting angular tree visualization to PNG '{angularPngFile}'...");
-                    visualizer.ExportToAngularPng(generator.Root, angularPngFile);
+                    visualizer.ExportToAngularPng(generator.Root, angularPngFile, progress =>
+                    {
+                        Console.WriteLine($"  {progress}");
+                    });
                     Console.WriteLine("Angular PNG export completed successfully.");
                 }
             }
