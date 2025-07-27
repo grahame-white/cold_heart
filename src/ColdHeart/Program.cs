@@ -22,6 +22,7 @@ internal class Program
             String? pngFile = null;
             String? angularPngFile = null;
             NodeStyle angularNodeStyle = NodeStyle.Circle; // Default to circle nodes
+            var angularConfig = new AngularVisualizationConfig();
 
             // Parse command line arguments
             for (Int32 i = 0; i < args.Length; i++)
@@ -106,6 +107,139 @@ internal class Program
                             return 1;
                         }
                         break;
+                    case "--angular-left-turn":
+                        if (i + 1 < args.Length)
+                        {
+                            if (Single.TryParse(args[++i], out var leftTurn))
+                            {
+                                angularConfig.LeftTurnAngle = leftTurn;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Error: Invalid left turn angle '{args[i]}'. Must be a number.");
+                                return 1;
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: --angular-left-turn requires an angle value");
+                            return 1;
+                        }
+                        break;
+                    case "--angular-right-turn":
+                        if (i + 1 < args.Length)
+                        {
+                            if (Single.TryParse(args[++i], out var rightTurn))
+                            {
+                                angularConfig.RightTurnAngle = rightTurn;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Error: Invalid right turn angle '{args[i]}'. Must be a number.");
+                                return 1;
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: --angular-right-turn requires an angle value");
+                            return 1;
+                        }
+                        break;
+                    case "--angular-thickness-impact":
+                        if (i + 1 < args.Length)
+                        {
+                            if (Single.TryParse(args[++i], out var thicknessImpact))
+                            {
+                                angularConfig.ThicknessImpact = thicknessImpact;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Error: Invalid thickness impact '{args[i]}'. Must be a number.");
+                                return 1;
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: --angular-thickness-impact requires a numeric value");
+                            return 1;
+                        }
+                        break;
+                    case "--angular-color-impact":
+                        if (i + 1 < args.Length)
+                        {
+                            if (Single.TryParse(args[++i], out var colorImpact))
+                            {
+                                angularConfig.ColorImpact = colorImpact;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Error: Invalid color impact '{args[i]}'. Must be a number.");
+                                return 1;
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: --angular-color-impact requires a numeric value");
+                            return 1;
+                        }
+                        break;
+                    case "--angular-render-longest":
+                        if (i + 1 < args.Length)
+                        {
+                            if (Int32.TryParse(args[++i], out var longestCount) && longestCount > 0)
+                            {
+                                angularConfig.RenderLongestPaths = longestCount;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Error: Invalid longest paths count '{args[i]}'. Must be a positive integer.");
+                                return 1;
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: --angular-render-longest requires a positive integer");
+                            return 1;
+                        }
+                        break;
+                    case "--angular-render-most-traversed":
+                        if (i + 1 < args.Length)
+                        {
+                            if (Int32.TryParse(args[++i], out var traversedCount) && traversedCount > 0)
+                            {
+                                angularConfig.RenderMostTraversedPaths = traversedCount;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Error: Invalid most traversed paths count '{args[i]}'. Must be a positive integer.");
+                                return 1;
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: --angular-render-most-traversed requires a positive integer");
+                            return 1;
+                        }
+                        break;
+                    case "--angular-render-random":
+                        if (i + 1 < args.Length)
+                        {
+                            if (Int32.TryParse(args[++i], out var randomCount) && randomCount > 0)
+                            {
+                                angularConfig.RenderRandomPaths = randomCount;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Error: Invalid random paths count '{args[i]}'. Must be a positive integer.");
+                                return 1;
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: --angular-render-random requires a positive integer");
+                            return 1;
+                        }
+                        break;
                     case "--help":
                     case "-h":
                         PrintUsage();
@@ -153,6 +287,20 @@ internal class Program
             // Export visualizations if specified
             if (svgFile != null || pngFile != null || angularPngFile != null)
             {
+                // Validate angular configuration if angular PNG is requested
+                if (angularPngFile != null)
+                {
+                    try
+                    {
+                        angularConfig.Validate();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error: Invalid angular visualization configuration - {ex.Message}");
+                        return 1;
+                    }
+                }
+
                 var visualizer = new TreeMapVisualizer();
 
                 if (svgFile != null)
@@ -172,7 +320,7 @@ internal class Program
                 if (angularPngFile != null)
                 {
                     Console.WriteLine($"Exporting angular tree visualization to PNG '{angularPngFile}'...");
-                    visualizer.ExportToAngularPng(generator.Root, angularPngFile, angularNodeStyle, progress =>
+                    visualizer.ExportToAngularPng(generator.Root, angularPngFile, angularConfig, angularNodeStyle, progress =>
                     {
                         Console.WriteLine($"  {progress}");
                     });
@@ -223,6 +371,13 @@ internal class Program
         Console.WriteLine("  --png <filename>          Export tree visualization to PNG format (traditional layout)");
         Console.WriteLine("  --png-angular <filename>  Export tree visualization to PNG format (angular layout)");
         Console.WriteLine("  --angular-node-style <style>  Node style for angular PNG (circle or rectangle, default: circle)");
+        Console.WriteLine("  --angular-left-turn <angle>   Left turn angle for even nodes (default: -8.65)");
+        Console.WriteLine("  --angular-right-turn <angle>  Right turn angle for odd nodes (default: 16.0)");
+        Console.WriteLine("  --angular-thickness-impact <factor>  Impact of traversals on line thickness (default: 1.0, 0 = no impact)");
+        Console.WriteLine("  --angular-color-impact <factor>      Impact of path length on color (default: 1.0, higher = greater change)");
+        Console.WriteLine("  --angular-render-longest <count>     Render only top N longest paths");
+        Console.WriteLine("  --angular-render-most-traversed <count>  Render only top N most traversed paths");
+        Console.WriteLine("  --angular-render-random <count>      Render only N random paths from the entire set");
         Console.WriteLine("  --help, -h                Show this help message");
         Console.WriteLine();
         Console.WriteLine("Examples:");

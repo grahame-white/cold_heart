@@ -9,13 +9,13 @@ namespace libColdHeart;
 
 public class AngularTreeLayoutCalculator
 {
-    private const Single EvenNodeAngle = -8.65f; // Left turn for even nodes (in degrees)
-    private const Single OddNodeAngle = 16.0f;   // Right turn for odd nodes (in degrees)
     private const Single DefaultNodeWidth = 60.0f;
     private const Single DefaultNodeHeight = 30.0f;
 
-    public LayoutNode CalculateLayout(TreeNode root)
+    public LayoutNode CalculateLayout(TreeNode root, AngularVisualizationConfig? config = null)
     {
+        config ??= new AngularVisualizationConfig();
+
         // First, calculate tree metrics needed for scaling
         var metrics = CalculateTreeMetrics(root);
 
@@ -23,7 +23,7 @@ public class AngularTreeLayoutCalculator
         var layoutRoot = ConvertToAngularLayoutTree(root, metrics);
 
         // Position nodes starting from bottom-left corner
-        PositionNodesAngularly(layoutRoot, metrics);
+        PositionNodesAngularly(layoutRoot, metrics, config);
 
         return layoutRoot;
     }
@@ -198,7 +198,7 @@ public class AngularTreeLayoutCalculator
         return layoutNode;
     }
 
-    private void PositionNodesAngularly(LayoutNode rootLayout, TreeMetrics metrics)
+    private void PositionNodesAngularly(LayoutNode rootLayout, TreeMetrics metrics, AngularVisualizationConfig config)
     {
         // Position root at bottom-left (we'll adjust coordinates later to ensure proper positioning)
         rootLayout.X = 0.0f;
@@ -206,20 +206,20 @@ public class AngularTreeLayoutCalculator
 
         // Start positioning children with initial angle of 90 degrees (pointing up)
         Single initialAngle = 90.0f;
-        PositionChildrenAngularly(rootLayout, initialAngle, metrics);
+        PositionChildrenAngularly(rootLayout, initialAngle, metrics, config);
 
         // Adjust all coordinates to ensure root is at bottom-left
         AdjustToBottomLeft(rootLayout);
     }
 
-    private void PositionChildrenAngularly(LayoutNode parent, Single currentAngle, TreeMetrics metrics)
+    private void PositionChildrenAngularly(LayoutNode parent, Single currentAngle, TreeMetrics metrics, AngularVisualizationConfig config)
     {
         if (parent.Children.Count == 0) return;
 
         foreach (var child in parent.Children)
         {
             // Calculate angle change based on whether the child value is even or odd
-            Single angleChange = (child.Value % 2 == 0) ? EvenNodeAngle : OddNodeAngle;
+            Single angleChange = (child.Value % 2 == 0) ? config.LeftTurnAngle : config.RightTurnAngle;
             Single newAngle = currentAngle + angleChange;
 
             // Calculate edge length based on distance from root
@@ -236,7 +236,7 @@ public class AngularTreeLayoutCalculator
             child.Y = parent.Y + deltaY;
 
             // Recursively position children of this child
-            PositionChildrenAngularly(child, newAngle, metrics);
+            PositionChildrenAngularly(child, newAngle, metrics, config);
         }
     }
 

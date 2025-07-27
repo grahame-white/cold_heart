@@ -32,17 +32,26 @@ public class EnhancedPngExporter
     private LayoutNode[]? _flattenedNodes;
     private (Single MinX, Single MinY, Single Width, Single Height)? _cachedBounds;
 
-    public void ExportToPng(LayoutNode rootLayout, TreeMetrics metrics, String filePath, NodeStyle nodeStyle = NodeStyle.Circle, Action<String>? progressCallback = null)
+    public void ExportToPng(LayoutNode rootLayout, TreeMetrics metrics, String filePath, AngularVisualizationConfig config, NodeStyle nodeStyle = NodeStyle.Circle, Action<String>? progressCallback = null)
     {
         // Clear caches for new export
         ClearCaches();
 
+        // Apply path filtering if specified
+        var filteredLayout = rootLayout;
+        var filteredMetrics = metrics;
+        if (config.RenderLongestPaths.HasValue || config.RenderMostTraversedPaths.HasValue || config.RenderRandomPaths.HasValue)
+        {
+            progressCallback?.Invoke("Filtering paths...");
+            (filteredLayout, filteredMetrics) = FilterPaths(rootLayout, metrics, config);
+        }
+
         progressCallback?.Invoke("Precomputing visual properties...");
-        var allNodes = GetAllNodesFlattened(rootLayout);
-        PrecomputeVisualPropertiesOptimized(allNodes, metrics);
+        var allNodes = GetAllNodesFlattened(filteredLayout);
+        PrecomputeVisualPropertiesOptimized(allNodes, filteredMetrics, config);
 
         progressCallback?.Invoke("Calculating image bounds...");
-        var bounds = CalculateBoundsOptimized(rootLayout);
+        var bounds = CalculateBoundsOptimized(filteredLayout);
 
         // Add margins
         Single margin = 50.0f;
@@ -100,11 +109,11 @@ public class EnhancedPngExporter
 
         // Draw connections first (so they appear behind nodes)
         progressCallback?.Invoke("Drawing connections...");
-        DrawEnhancedConnections(canvas, rootLayout, metrics, progressCallback);
+        DrawEnhancedConnections(canvas, filteredLayout, filteredMetrics, progressCallback);
 
         // Draw nodes
         progressCallback?.Invoke("Drawing nodes...");
-        DrawEnhancedNodes(canvas, rootLayout, metrics, nodeStyle, progressCallback);
+        DrawEnhancedNodes(canvas, filteredLayout, filteredMetrics, nodeStyle, progressCallback);
 
         canvas.Restore();
 
@@ -126,20 +135,20 @@ public class EnhancedPngExporter
         _cachedBounds = null;
     }
 
-    private void PrecomputeVisualProperties(List<LayoutNode> allNodes, TreeMetrics metrics)
+    private void PrecomputeVisualProperties(List<LayoutNode> allNodes, TreeMetrics metrics, AngularVisualizationConfig config)
     {
         // Use parallel processing to compute all visual properties upfront
         Parallel.ForEach(allNodes, node =>
         {
             var nodeValue = node.Value;
-            _nodeColorCache[nodeValue] = CalculateNodeColor(nodeValue, metrics);
-            _lineColorCache[nodeValue] = CalculateLineColor(nodeValue, metrics);
-            _lineWidthCache[nodeValue] = CalculateLineWidth(nodeValue, metrics);
-            _nodeRadiusCache[nodeValue] = CalculateNodeRadius(nodeValue, metrics);
+            _nodeColorCache[nodeValue] = CalculateNodeColor(nodeValue, metrics, config);
+            _lineColorCache[nodeValue] = CalculateLineColor(nodeValue, metrics, config);
+            _lineWidthCache[nodeValue] = CalculateLineWidth(nodeValue, metrics, config);
+            _nodeRadiusCache[nodeValue] = CalculateNodeRadius(nodeValue, metrics, config);
         });
     }
 
-    private void PrecomputeVisualPropertiesOptimized(LayoutNode[] allNodes, TreeMetrics metrics)
+    private void PrecomputeVisualPropertiesOptimized(LayoutNode[] allNodes, TreeMetrics metrics, AngularVisualizationConfig config)
     {
         // Use parallel processing with array-based access for better cache locality
         Parallel.For(0, allNodes.Length, i =>
@@ -148,10 +157,10 @@ public class EnhancedPngExporter
             var nodeValue = node.Value;
 
             // Batch calculate all properties for this node in one go to minimize dictionary lookups
-            var nodeColor = CalculateNodeColorDirect(nodeValue, metrics);
-            var lineColor = CalculateLineColorDirect(nodeValue, metrics);
-            var lineWidth = CalculateLineWidthDirect(nodeValue, metrics);
-            var nodeRadius = CalculateNodeRadiusDirect(nodeValue, metrics);
+            var nodeColor = CalculateNodeColorDirect(nodeValue, metrics, config);
+            var lineColor = CalculateLineColorDirect(nodeValue, metrics, config);
+            var lineWidth = CalculateLineWidthDirect(nodeValue, metrics, config);
+            var nodeRadius = CalculateNodeRadiusDirect(nodeValue, metrics, config);
 
             // Update caches atomically
             _nodeColorCache[nodeValue] = nodeColor;
@@ -536,7 +545,7 @@ public class EnhancedPngExporter
         return count;
     }
 
-    private SKColor CalculateLineColor(BigInteger nodeValue, TreeMetrics metrics)
+    private SKColor CalculateLineColor(BigInteger nodeValue, TreeMetrics metrics, AngularVisualizationConfig config)
     {
         // Check cache first for performance
         if (_lineColorCache.TryGetValue(nodeValue, out var cachedColor))
@@ -544,29 +553,10 @@ public class EnhancedPngExporter
             return cachedColor;
         }
 
-        // Color depends linearly on log(longest path)
-        var pathLength = metrics.PathLengths.GetValueOrDefault(nodeValue, 0);
-        var maxPathLength = metrics.LongestPath;
-
-        if (maxPathLength <= 1)
-        {
-            return SKColor.Parse("#666666"); // Default gray
-        }
-
-        // Use logarithmic scaling for color intensity
-        Single logPathLength = (Single)Math.Log(pathLength + 1);
-        Single logMaxPathLength = (Single)Math.Log(maxPathLength + 1);
-        Single normalizedIntensity = logPathLength / logMaxPathLength;
-
-        // Interpolate between blue (low intensity) and red (high intensity)
-        Byte red = (Byte)(normalizedIntensity * 255);
-        Byte blue = (Byte)((1.0f - normalizedIntensity) * 255);
-        Byte green = 64; // Keep some green for visual distinction
-
-        return new SKColor(red, green, blue);
+        return CalculateLineColorDirect(nodeValue, metrics, config);
     }
 
-    private Single CalculateLineWidth(BigInteger nodeValue, TreeMetrics metrics)
+    private Single CalculateLineWidth(BigInteger nodeValue, TreeMetrics metrics, AngularVisualizationConfig config)
     {
         // Check cache first for performance
         if (_lineWidthCache.TryGetValue(nodeValue, out var cachedWidth))
@@ -574,21 +564,10 @@ public class EnhancedPngExporter
             return cachedWidth;
         }
 
-        // Thickness depends linearly on how often the path is traversed
-        var traversalCount = metrics.TraversalCounts.GetValueOrDefault(nodeValue, 1);
-        var maxTraversalCount = metrics.TraversalCounts.Values.Max();
-
-        if (maxTraversalCount <= 1)
-        {
-            return BaseLineStrokeWidth;
-        }
-
-        // Linear scaling based on traversal frequency
-        Single normalizedThickness = (Single)traversalCount / maxTraversalCount;
-        return BaseLineStrokeWidth + (normalizedThickness * (MaxStrokeWidth - BaseLineStrokeWidth));
+        return CalculateLineWidthDirect(nodeValue, metrics, config);
     }
 
-    private SKColor CalculateNodeColor(BigInteger nodeValue, TreeMetrics metrics)
+    private SKColor CalculateNodeColor(BigInteger nodeValue, TreeMetrics metrics, AngularVisualizationConfig config)
     {
         // Check cache first for performance
         if (_nodeColorCache.TryGetValue(nodeValue, out var cachedColor))
@@ -596,29 +575,10 @@ public class EnhancedPngExporter
             return cachedColor;
         }
 
-        // Color depends on log(longest path) - same as line color but slightly different for nodes
-        var pathLength = metrics.PathLengths.GetValueOrDefault(nodeValue, 0);
-        var maxPathLength = metrics.LongestPath;
-
-        if (maxPathLength <= 1)
-        {
-            return SKColor.Parse("#4a90e2"); // Default blue
-        }
-
-        // Use logarithmic scaling for color intensity
-        Single logPathLength = (Single)Math.Log(pathLength + 1);
-        Single logMaxPathLength = (Single)Math.Log(maxPathLength + 1);
-        Single normalizedIntensity = logPathLength / logMaxPathLength;
-
-        // Interpolate between blue (low intensity) and red (high intensity)
-        Byte red = (Byte)(normalizedIntensity * 255);
-        Byte blue = (Byte)((1.0f - normalizedIntensity) * 255);
-        Byte green = 80; // Keep some green for visual distinction
-
-        return new SKColor(red, green, blue);
+        return CalculateNodeColorDirect(nodeValue, metrics, config);
     }
 
-    private Single CalculateNodeRadius(BigInteger nodeValue, TreeMetrics metrics)
+    private Single CalculateNodeRadius(BigInteger nodeValue, TreeMetrics metrics, AngularVisualizationConfig config)
     {
         // Check cache first for performance
         if (_nodeRadiusCache.TryGetValue(nodeValue, out var cachedRadius))
@@ -626,13 +586,13 @@ public class EnhancedPngExporter
             return cachedRadius;
         }
 
-        return CalculateNodeRadiusDirect(nodeValue, metrics);
+        return CalculateNodeRadiusDirect(nodeValue, metrics, config);
     }
 
     // Direct calculation methods that bypass cache lookup for initial precomputation
-    private SKColor CalculateNodeColorDirect(BigInteger nodeValue, TreeMetrics metrics)
+    private SKColor CalculateNodeColorDirect(BigInteger nodeValue, TreeMetrics metrics, AngularVisualizationConfig config)
     {
-        // Color depends on log(longest path) - same as line color but slightly different for nodes
+        // Color depends on log(longest path) with configurable impact
         var pathLength = metrics.PathLengths.GetValueOrDefault(nodeValue, 0);
         var maxPathLength = metrics.LongestPath;
 
@@ -641,22 +601,25 @@ public class EnhancedPngExporter
             return SKColor.Parse("#4a90e2"); // Default blue
         }
 
-        // Use logarithmic scaling for color intensity
+        // Use logarithmic scaling for color intensity with configurable impact
         Single logPathLength = (Single)Math.Log(pathLength + 1);
         Single logMaxPathLength = (Single)Math.Log(maxPathLength + 1);
         Single normalizedIntensity = logPathLength / logMaxPathLength;
 
+        // Apply color impact - higher values increase color variation for longer paths
+        Single impactAdjustedIntensity = (Single)Math.Pow(normalizedIntensity, 1.0f / Math.Max(config.ColorImpact, 0.1f));
+
         // Interpolate between blue (low intensity) and red (high intensity)
-        Byte red = (Byte)(normalizedIntensity * 255);
-        Byte blue = (Byte)((1.0f - normalizedIntensity) * 255);
+        Byte red = (Byte)(impactAdjustedIntensity * 255);
+        Byte blue = (Byte)((1.0f - impactAdjustedIntensity) * 255);
         Byte green = 80; // Keep some green for visual distinction
 
         return new SKColor(red, green, blue);
     }
 
-    private SKColor CalculateLineColorDirect(BigInteger nodeValue, TreeMetrics metrics)
+    private SKColor CalculateLineColorDirect(BigInteger nodeValue, TreeMetrics metrics, AngularVisualizationConfig config)
     {
-        // Color depends linearly on log(longest path)
+        // Color depends on log(longest path) with configurable impact
         var pathLength = metrics.PathLengths.GetValueOrDefault(nodeValue, 0);
         var maxPathLength = metrics.LongestPath;
 
@@ -665,52 +628,59 @@ public class EnhancedPngExporter
             return SKColor.Parse("#666666"); // Default gray
         }
 
-        // Use logarithmic scaling for color intensity
+        // Use logarithmic scaling for color intensity with configurable impact
         Single logPathLength = (Single)Math.Log(pathLength + 1);
         Single logMaxPathLength = (Single)Math.Log(maxPathLength + 1);
         Single normalizedIntensity = logPathLength / logMaxPathLength;
 
+        // Apply color impact - higher values increase color variation for longer paths
+        Single impactAdjustedIntensity = (Single)Math.Pow(normalizedIntensity, 1.0f / Math.Max(config.ColorImpact, 0.1f));
+
         // Interpolate between blue (low intensity) and red (high intensity)
-        Byte red = (Byte)(normalizedIntensity * 255);
-        Byte blue = (Byte)((1.0f - normalizedIntensity) * 255);
+        Byte red = (Byte)(impactAdjustedIntensity * 255);
+        Byte blue = (Byte)((1.0f - impactAdjustedIntensity) * 255);
         Byte green = 64; // Keep some green for visual distinction
 
         return new SKColor(red, green, blue);
     }
 
-    private Single CalculateLineWidthDirect(BigInteger nodeValue, TreeMetrics metrics)
+    private Single CalculateLineWidthDirect(BigInteger nodeValue, TreeMetrics metrics, AngularVisualizationConfig config)
     {
-        // Thickness depends linearly on how often the path is traversed
+        // Thickness depends on how often the path is traversed, scaled by impact factor
         var traversalCount = metrics.TraversalCounts.GetValueOrDefault(nodeValue, 1);
-        var maxTraversalCount = metrics.TraversalCounts.Values.Max();
+        var maxTraversalCount = metrics.TraversalCounts.Values.DefaultIfEmpty(1).Max();
 
-        if (maxTraversalCount <= 1)
+        if (maxTraversalCount <= 1 || config.ThicknessImpact == 0)
         {
             return BaseLineStrokeWidth;
         }
 
-        // Linear scaling based on traversal frequency
+        // Apply impact factor - 0 means no impact, higher values amplify the effect
         Single normalizedThickness = (Single)traversalCount / maxTraversalCount;
-        return BaseLineStrokeWidth + (normalizedThickness * (MaxStrokeWidth - BaseLineStrokeWidth));
+        Single impactAdjustedThickness = (Single)Math.Pow(normalizedThickness, 1.0f / Math.Max(config.ThicknessImpact, 0.1f));
+
+        return BaseLineStrokeWidth + (impactAdjustedThickness * (MaxStrokeWidth - BaseLineStrokeWidth));
     }
 
-    private Single CalculateNodeRadiusDirect(BigInteger nodeValue, TreeMetrics metrics)
+    private Single CalculateNodeRadiusDirect(BigInteger nodeValue, TreeMetrics metrics, AngularVisualizationConfig config)
     {
-        // Radius depends on traversal frequency
+        // Radius depends on traversal frequency, scaled by impact factor
         var traversalCount = metrics.TraversalCounts.GetValueOrDefault(nodeValue, 1);
-        var maxTraversalCount = metrics.TraversalCounts.Values.Max();
+        var maxTraversalCount = metrics.TraversalCounts.Values.DefaultIfEmpty(1).Max();
 
         const Single baseRadius = 3.0f;
         const Single maxRadius = 8.0f;
 
-        if (maxTraversalCount <= 1)
+        if (maxTraversalCount <= 1 || config.ThicknessImpact == 0)
         {
             return baseRadius;
         }
 
-        // Scale radius based on traversal frequency
+        // Apply same impact factor as line thickness for consistency
         Single normalizedSize = (Single)traversalCount / maxTraversalCount;
-        return baseRadius + (normalizedSize * (maxRadius - baseRadius));
+        Single impactAdjustedSize = (Single)Math.Pow(normalizedSize, 1.0f / Math.Max(config.ThicknessImpact, 0.1f));
+
+        return baseRadius + (impactAdjustedSize * (maxRadius - baseRadius));
     }
 
     private (Single MinX, Single MinY, Single Width, Single Height) CalculateBounds(LayoutNode rootLayout)
@@ -821,5 +791,100 @@ public class EnhancedPngExporter
         }
 
         return _flattenedNodes;
+    }
+
+    private (LayoutNode filteredLayout, TreeMetrics filteredMetrics) FilterPaths(LayoutNode rootLayout, TreeMetrics metrics, AngularVisualizationConfig config)
+    {
+        HashSet<BigInteger> selectedValues;
+
+        if (config.RenderLongestPaths.HasValue)
+        {
+            // Select top N nodes with longest paths
+            selectedValues = metrics.PathLengths
+                .OrderByDescending(kvp => kvp.Value)
+                .Take(config.RenderLongestPaths.Value)
+                .Select(kvp => kvp.Key)
+                .ToHashSet();
+        }
+        else if (config.RenderMostTraversedPaths.HasValue)
+        {
+            // Select top N nodes with highest traversal counts
+            selectedValues = metrics.TraversalCounts
+                .OrderByDescending(kvp => kvp.Value)
+                .Take(config.RenderMostTraversedPaths.Value)
+                .Select(kvp => kvp.Key)
+                .ToHashSet();
+        }
+        else if (config.RenderRandomPaths.HasValue)
+        {
+            // Select N random nodes
+            var allValues = metrics.PathLengths.Keys.ToArray();
+            var random = new Random();
+            selectedValues = allValues
+                .OrderBy(_ => random.Next())
+                .Take(config.RenderRandomPaths.Value)
+                .ToHashSet();
+        }
+        else
+        {
+            // No filtering - return original
+            return (rootLayout, metrics);
+        }
+
+        // Ensure root is always included
+        selectedValues.Add(rootLayout.Value);
+
+        // Build filtered layout tree keeping only paths to selected nodes
+        var filteredLayout = FilterLayoutTree(rootLayout, selectedValues);
+
+        // Build filtered metrics
+        var filteredPathLengths = metrics.PathLengths
+            .Where(kvp => selectedValues.Contains(kvp.Key))
+            .ToDictionary();
+        var filteredTraversalCounts = metrics.TraversalCounts
+            .Where(kvp => selectedValues.Contains(kvp.Key))
+            .ToDictionary();
+
+        var filteredMetrics = new TreeMetrics(
+            filteredPathLengths.Values.DefaultIfEmpty(0).Max(),
+            filteredPathLengths.Values.DefaultIfEmpty(0).Max(),
+            filteredPathLengths,
+            filteredTraversalCounts
+        );
+
+        return (filteredLayout, filteredMetrics);
+    }
+
+    private LayoutNode FilterLayoutTree(LayoutNode node, HashSet<BigInteger> selectedValues)
+    {
+        // Create new layout node for current node
+        var filteredNode = new LayoutNode(node.Value)
+        {
+            X = node.X,
+            Y = node.Y,
+            Width = node.Width,
+            Height = node.Height
+        };
+
+        // Add children that are either selected or lead to selected nodes
+        foreach (var child in node.Children)
+        {
+            if (HasSelectedDescendant(child, selectedValues))
+            {
+                filteredNode.Children.Add(FilterLayoutTree(child, selectedValues));
+            }
+        }
+
+        return filteredNode;
+    }
+
+    private Boolean HasSelectedDescendant(LayoutNode node, HashSet<BigInteger> selectedValues)
+    {
+        // Check if this node is selected
+        if (selectedValues.Contains(node.Value))
+            return true;
+
+        // Check if any descendant is selected
+        return node.Children.Any(child => HasSelectedDescendant(child, selectedValues));
     }
 }
