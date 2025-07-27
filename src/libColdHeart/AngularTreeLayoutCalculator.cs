@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading.Tasks;
 
 namespace libColdHeart;
 
@@ -28,33 +30,31 @@ public class AngularTreeLayoutCalculator
 
     public TreeMetrics CalculateTreeMetrics(TreeNode root)
     {
-        var pathLengths = new Dictionary<BigInteger, Int32>();
-        var traversalCounts = new Dictionary<BigInteger, Int32>();
-        var allNodes = new HashSet<BigInteger>();
+        var pathLengths = new ConcurrentDictionary<BigInteger, Int32>();
+        var traversalCounts = new ConcurrentDictionary<BigInteger, Int32>();
+        var allNodes = new ConcurrentBag<BigInteger>();
 
-        // Calculate path lengths from root to each node
-        CalculatePathLengths(root, 0, pathLengths, allNodes);
+        // Calculate both metrics in parallel
+        var pathTask = Task.Run(() => CalculatePathLengths(root, 0, pathLengths, allNodes));
+        var traversalTask = Task.Run(() => CalculateTraversalCounts(root, traversalCounts));
 
-        // Calculate traversal counts by counting paths that go through each node
-        CalculateTraversalCounts(root, traversalCounts);
+        // Wait for both calculations to complete
+        Task.WaitAll(pathTask, traversalTask);
 
         var furthestDistance = pathLengths.Values.Max();
         var longestPath = pathLengths.Values.Max();
 
-        return new TreeMetrics(furthestDistance, longestPath, pathLengths, traversalCounts);
+        return new TreeMetrics(furthestDistance, longestPath, pathLengths.ToDictionary(), traversalCounts.ToDictionary());
     }
 
     private void CalculatePathLengths(TreeNode? node, Int32 currentDepth,
-        Dictionary<BigInteger, Int32> pathLengths,
-        HashSet<BigInteger> allNodes)
+        ConcurrentDictionary<BigInteger, Int32> pathLengths,
+        ConcurrentBag<BigInteger> allNodes)
     {
         if (node == null) return;
 
-        // Update path length (distance from root)
-        if (!pathLengths.TryGetValue(node.Value, out var existingDepth) || existingDepth > currentDepth)
-        {
-            pathLengths[node.Value] = currentDepth;
-        }
+        // Update path length (distance from root) using thread-safe operations
+        pathLengths.AddOrUpdate(node.Value, currentDepth, (key, existingDepth) => Math.Min(existingDepth, currentDepth));
 
         allNodes.Add(node.Value);
 
@@ -63,7 +63,7 @@ public class AngularTreeLayoutCalculator
         CalculatePathLengths(node.RightChild, currentDepth + 1, pathLengths, allNodes);
     }
 
-    private void CalculateTraversalCounts(TreeNode? node, Dictionary<BigInteger, Int32> traversalCounts)
+    private void CalculateTraversalCounts(TreeNode? node, ConcurrentDictionary<BigInteger, Int32> traversalCounts)
     {
         if (node == null) return;
 

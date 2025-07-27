@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Threading.Tasks;
 using SkiaSharp;
 
 namespace libColdHeart;
@@ -20,8 +22,21 @@ public class EnhancedPngExporter
 
     private static readonly SKColor BackgroundColor = SKColor.Parse("#ffffff"); // White background as required
 
+    // Cache for expensive calculations to avoid repeated computation
+    private readonly ConcurrentDictionary<BigInteger, SKColor> _nodeColorCache = new();
+    private readonly ConcurrentDictionary<BigInteger, SKColor> _lineColorCache = new();
+    private readonly ConcurrentDictionary<BigInteger, Single> _lineWidthCache = new();
+    private readonly ConcurrentDictionary<BigInteger, Single> _nodeRadiusCache = new();
+
     public void ExportToPng(LayoutNode rootLayout, TreeMetrics metrics, String filePath, NodeStyle nodeStyle = NodeStyle.Circle, Action<String>? progressCallback = null)
     {
+        // Clear caches for new export
+        ClearCaches();
+
+        progressCallback?.Invoke("Precomputing visual properties...");
+        var allNodes = GetAllNodes(rootLayout);
+        PrecomputeVisualProperties(allNodes, metrics);
+
         progressCallback?.Invoke("Calculating image bounds...");
         var bounds = CalculateBounds(rootLayout);
 
@@ -85,7 +100,7 @@ public class EnhancedPngExporter
 
         // Draw nodes
         progressCallback?.Invoke("Drawing nodes...");
-        DrawEnhancedNodes(canvas, rootLayout, metrics, nodeStyle);
+        DrawEnhancedNodes(canvas, rootLayout, metrics, nodeStyle, progressCallback);
 
         canvas.Restore();
 
@@ -95,6 +110,27 @@ public class EnhancedPngExporter
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         using var stream = File.OpenWrite(filePath);
         data.SaveTo(stream);
+    }
+
+    private void ClearCaches()
+    {
+        _nodeColorCache.Clear();
+        _lineColorCache.Clear();
+        _lineWidthCache.Clear();
+        _nodeRadiusCache.Clear();
+    }
+
+    private void PrecomputeVisualProperties(List<LayoutNode> allNodes, TreeMetrics metrics)
+    {
+        // Use parallel processing to compute all visual properties upfront
+        Parallel.ForEach(allNodes, node =>
+        {
+            var nodeValue = node.Value;
+            _nodeColorCache[nodeValue] = CalculateNodeColor(nodeValue, metrics);
+            _lineColorCache[nodeValue] = CalculateLineColor(nodeValue, metrics);
+            _lineWidthCache[nodeValue] = CalculateLineWidth(nodeValue, metrics);
+            _nodeRadiusCache[nodeValue] = CalculateNodeRadius(nodeValue, metrics);
+        });
     }
 
     private void DrawEnhancedConnections(SKCanvas canvas, LayoutNode node, TreeMetrics metrics, Action<String>? progressCallback = null)
@@ -107,25 +143,70 @@ public class EnhancedPngExporter
         }
         else
         {
-            DrawEnhancedConnectionsRecursive(canvas, node, metrics);
+            DrawEnhancedConnectionsOptimized(canvas, node);
+        }
+    }
+
+    private void DrawEnhancedConnectionsOptimized(SKCanvas canvas, LayoutNode node)
+    {
+        // Use a single reusable paint object to minimize allocations
+        using var paint = new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            IsAntialias = true
+        };
+
+        DrawConnectionsRecursiveOptimized(canvas, node, paint);
+    }
+
+    private void DrawConnectionsRecursiveOptimized(SKCanvas canvas, LayoutNode node, SKPaint paint)
+    {
+        foreach (var child in node.Children)
+        {
+            // Use cached values instead of recalculating
+            var lineColor = _lineColorCache[child.Value];
+            var lineWidth = _lineWidthCache[child.Value];
+
+            // Update paint properties instead of creating new paint
+            paint.Color = lineColor;
+            paint.StrokeWidth = lineWidth;
+
+            // Draw line from parent center to child center
+            Single parentCenterX = node.X + (node.Width / 2.0f);
+            Single parentCenterY = node.Y + (node.Height / 2.0f);
+            Single childCenterX = child.X + (child.Width / 2.0f);
+            Single childCenterY = child.Y + (child.Height / 2.0f);
+
+            canvas.DrawLine(parentCenterX, parentCenterY, childCenterX, childCenterY, paint);
+
+            // Recursively draw connections for children
+            DrawConnectionsRecursiveOptimized(canvas, child, paint);
         }
     }
 
     private void DrawEnhancedConnectionsWithProgress(SKCanvas canvas, LayoutNode node, TreeMetrics metrics, Action<String> progressCallback, Int32 totalNodes, ref Int32 processedNodes)
     {
+        // Use a single reusable paint object to minimize allocations
+        using var paint = new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            IsAntialias = true
+        };
+
+        DrawConnectionsWithProgressRecursive(canvas, node, paint, progressCallback, totalNodes, ref processedNodes);
+    }
+
+    private void DrawConnectionsWithProgressRecursive(SKCanvas canvas, LayoutNode node, SKPaint paint, Action<String> progressCallback, Int32 totalNodes, ref Int32 processedNodes)
+    {
         foreach (var child in node.Children)
         {
-            // Calculate line properties based on path length and traversal frequency
-            var lineColor = CalculateLineColor(child.Value, metrics);
-            var lineWidth = CalculateLineWidth(child.Value, metrics);
+            // Use cached values instead of recalculating
+            var lineColor = _lineColorCache[child.Value];
+            var lineWidth = _lineWidthCache[child.Value];
 
-            using var paint = new SKPaint
-            {
-                Color = lineColor,
-                StrokeWidth = lineWidth,
-                Style = SKPaintStyle.Stroke,
-                IsAntialias = true
-            };
+            // Update paint properties instead of creating new paint
+            paint.Color = lineColor;
+            paint.StrokeWidth = lineWidth;
 
             // Draw line from parent center to child center
             Single parentCenterX = node.X + (node.Width / 2.0f);
@@ -145,136 +226,211 @@ public class EnhancedPngExporter
             }
 
             // Recursively draw connections for children
-            DrawEnhancedConnectionsWithProgress(canvas, child, metrics, progressCallback, totalNodes, ref processedNodes);
+            DrawConnectionsWithProgressRecursive(canvas, child, paint, progressCallback, totalNodes, ref processedNodes);
         }
     }
 
-    private void DrawEnhancedConnectionsRecursive(SKCanvas canvas, LayoutNode node, TreeMetrics metrics)
+    private void DrawEnhancedNodes(SKCanvas canvas, LayoutNode node, TreeMetrics metrics, NodeStyle nodeStyle, Action<String>? progressCallback = null)
     {
-        foreach (var child in node.Children)
-        {
-            // Calculate line properties based on path length and traversal frequency
-            var lineColor = CalculateLineColor(child.Value, metrics);
-            var lineWidth = CalculateLineWidth(child.Value, metrics);
-
-            using var paint = new SKPaint
-            {
-                Color = lineColor,
-                StrokeWidth = lineWidth,
-                Style = SKPaintStyle.Stroke,
-                IsAntialias = true
-            };
-
-            // Draw line from parent center to child center
-            Single parentCenterX = node.X + (node.Width / 2.0f);
-            Single parentCenterY = node.Y + (node.Height / 2.0f);
-            Single childCenterX = child.X + (child.Width / 2.0f);
-            Single childCenterY = child.Y + (child.Height / 2.0f);
-
-            canvas.DrawLine(parentCenterX, parentCenterY, childCenterX, childCenterY, paint);
-
-            // Recursively draw connections for children
-            DrawEnhancedConnectionsRecursive(canvas, child, metrics);
-        }
-    }
-
-    private void DrawEnhancedNodes(SKCanvas canvas, LayoutNode node, TreeMetrics metrics, NodeStyle nodeStyle)
-    {
-        // Calculate node properties based on path length and traversal frequency
-        var nodeColor = CalculateNodeColor(node.Value, metrics);
-
         if (nodeStyle == NodeStyle.Circle)
         {
-            DrawCircleNode(canvas, node, nodeColor, metrics);
+            DrawCircleNodesOptimized(canvas, node, progressCallback);
         }
         else
         {
-            DrawRectangleNode(canvas, node, nodeColor);
-        }
-
-        // Recursively draw child nodes
-        foreach (var child in node.Children)
-        {
-            DrawEnhancedNodes(canvas, child, metrics, nodeStyle);
+            DrawRectangleNodesOptimized(canvas, node, progressCallback);
         }
     }
 
-    private void DrawCircleNode(SKCanvas canvas, LayoutNode node, SKColor nodeColor, TreeMetrics metrics)
+    private void DrawCircleNodesOptimized(SKCanvas canvas, LayoutNode node, Action<String>? progressCallback = null)
     {
-        var nodeRadius = CalculateNodeRadius(node.Value, metrics);
-
-        // Draw simplified node as a circle at the center of the node area
-        using var paint = new SKPaint
+        // Use reusable paint objects to minimize allocations
+        using var fillPaint = new SKPaint
         {
-            Color = nodeColor,
             Style = SKPaintStyle.Fill,
             IsAntialias = true
         };
 
-        Single centerX = node.X + (node.Width / 2.0f);
-        Single centerY = node.Y + (node.Height / 2.0f);
-
-        canvas.DrawCircle(centerX, centerY, nodeRadius, paint);
-
-        // Draw a subtle border around the circle for better visibility
         using var borderPaint = new SKPaint
         {
-            Color = nodeColor.WithAlpha(180), // Slightly transparent border
             Style = SKPaintStyle.Stroke,
             StrokeWidth = 1.0f,
             IsAntialias = true
         };
 
-        canvas.DrawCircle(centerX, centerY, nodeRadius, borderPaint);
+        if (progressCallback != null)
+        {
+            var totalNodes = CountNodes(node);
+            var processedNodes = 0;
+            DrawCircleNodesWithProgress(canvas, node, fillPaint, borderPaint, progressCallback, totalNodes, ref processedNodes);
+        }
+        else
+        {
+            DrawCircleNodesRecursive(canvas, node, fillPaint, borderPaint);
+        }
     }
 
-    private void DrawRectangleNode(SKCanvas canvas, LayoutNode node, SKColor nodeColor)
+    private void DrawCircleNodesWithProgress(SKCanvas canvas, LayoutNode node, SKPaint fillPaint, SKPaint borderPaint, Action<String> progressCallback, Int32 totalNodes, ref Int32 processedNodes)
+    {
+        // Use cached values
+        var nodeColor = _nodeColorCache[node.Value];
+        var nodeRadius = _nodeRadiusCache[node.Value];
+
+        // Update paint properties
+        fillPaint.Color = nodeColor;
+        borderPaint.Color = nodeColor.WithAlpha(180); // Slightly transparent border
+
+        Single centerX = node.X + (node.Width / 2.0f);
+        Single centerY = node.Y + (node.Height / 2.0f);
+
+        canvas.DrawCircle(centerX, centerY, nodeRadius, fillPaint);
+        canvas.DrawCircle(centerX, centerY, nodeRadius, borderPaint);
+
+        processedNodes++;
+
+        // Report progress every 100 nodes for node drawing (less frequent than connections)
+        if (processedNodes % 100 == 0 || processedNodes == totalNodes)
+        {
+            var percentage = (Int32)((processedNodes / (Single)totalNodes) * 100);
+            progressCallback($"Drawing nodes... {processedNodes}/{totalNodes} ({percentage}%)");
+        }
+
+        // Recursively draw child nodes
+        foreach (var child in node.Children)
+        {
+            DrawCircleNodesWithProgress(canvas, child, fillPaint, borderPaint, progressCallback, totalNodes, ref processedNodes);
+        }
+    }
+
+    private void DrawCircleNodesRecursive(SKCanvas canvas, LayoutNode node, SKPaint fillPaint, SKPaint borderPaint)
+    {
+        // Use cached values
+        var nodeColor = _nodeColorCache[node.Value];
+        var nodeRadius = _nodeRadiusCache[node.Value];
+
+        // Update paint properties
+        fillPaint.Color = nodeColor;
+        borderPaint.Color = nodeColor.WithAlpha(180); // Slightly transparent border
+
+        Single centerX = node.X + (node.Width / 2.0f);
+        Single centerY = node.Y + (node.Height / 2.0f);
+
+        canvas.DrawCircle(centerX, centerY, nodeRadius, fillPaint);
+        canvas.DrawCircle(centerX, centerY, nodeRadius, borderPaint);
+
+        // Recursively draw child nodes
+        foreach (var child in node.Children)
+        {
+            DrawCircleNodesRecursive(canvas, child, fillPaint, borderPaint);
+        }
+    }
+
+    private void DrawRectangleNodesOptimized(SKCanvas canvas, LayoutNode node, Action<String>? progressCallback = null)
     {
         const Single DefaultFontSize = 12.0f;
         const Single NodeStrokeWidth = 2.0f;
         const Single CornerRadius = 5.0f;
 
-        // Use a lighter version of the calculated color for the background
-        var fillColor = nodeColor.WithAlpha(100);
-        var strokeColor = nodeColor;
-        var textColor = SKColor.Parse("#000000");
-
-        // Draw node rectangle
+        // Use reusable paint objects
         using var fillPaint = new SKPaint
         {
-            Color = fillColor,
             Style = SKPaintStyle.Fill,
             IsAntialias = true
         };
 
         using var strokePaint = new SKPaint
         {
-            Color = strokeColor,
             StrokeWidth = NodeStrokeWidth,
             Style = SKPaintStyle.Stroke,
             IsAntialias = true
         };
 
-        var rect = new SKRect(node.X, node.Y, node.X + node.Width, node.Y + node.Height);
-        using var roundRect = new SKRoundRect(rect, CornerRadius, CornerRadius);
-
-        canvas.DrawRoundRect(roundRect, fillPaint);
-        canvas.DrawRoundRect(roundRect, strokePaint);
-
-        // Draw node text (value)
         using var textPaint = new SKPaint
         {
-            Color = textColor,
+            Color = SKColor.Parse("#000000"),
             TextSize = DefaultFontSize,
             IsAntialias = true,
             TextAlign = SKTextAlign.Center,
             Typeface = SKTypeface.FromFamilyName("Arial")
         };
 
+        if (progressCallback != null)
+        {
+            var totalNodes = CountNodes(node);
+            var processedNodes = 0;
+            DrawRectangleNodesWithProgress(canvas, node, fillPaint, strokePaint, textPaint, CornerRadius, progressCallback, totalNodes, ref processedNodes);
+        }
+        else
+        {
+            DrawRectangleNodesRecursive(canvas, node, fillPaint, strokePaint, textPaint, CornerRadius);
+        }
+    }
+
+    private void DrawRectangleNodesWithProgress(SKCanvas canvas, LayoutNode node, SKPaint fillPaint, SKPaint strokePaint, SKPaint textPaint, Single cornerRadius, Action<String> progressCallback, Int32 totalNodes, ref Int32 processedNodes)
+    {
+        // Use cached color
+        var nodeColor = _nodeColorCache[node.Value];
+        var fillColor = nodeColor.WithAlpha(100);
+
+        // Update paint properties
+        fillPaint.Color = fillColor;
+        strokePaint.Color = nodeColor;
+
+        var rect = new SKRect(node.X, node.Y, node.X + node.Width, node.Y + node.Height);
+        using var roundRect = new SKRoundRect(rect, cornerRadius, cornerRadius);
+
+        canvas.DrawRoundRect(roundRect, fillPaint);
+        canvas.DrawRoundRect(roundRect, strokePaint);
+
+        // Draw node text (value)
         Single textX = node.X + (node.Width / 2.0f);
-        Single textY = node.Y + (node.Height / 2.0f) + (DefaultFontSize / 3.0f); // Adjust for baseline
+        Single textY = node.Y + (node.Height / 2.0f) + (textPaint.TextSize / 3.0f); // Adjust for baseline
 
         canvas.DrawText(node.Value.ToString(), textX, textY, textPaint);
+
+        processedNodes++;
+
+        // Report progress every 100 nodes for node drawing
+        if (processedNodes % 100 == 0 || processedNodes == totalNodes)
+        {
+            var percentage = (Int32)((processedNodes / (Single)totalNodes) * 100);
+            progressCallback($"Drawing nodes... {processedNodes}/{totalNodes} ({percentage}%)");
+        }
+
+        // Recursively draw child nodes
+        foreach (var child in node.Children)
+        {
+            DrawRectangleNodesWithProgress(canvas, child, fillPaint, strokePaint, textPaint, cornerRadius, progressCallback, totalNodes, ref processedNodes);
+        }
+    }
+
+    private void DrawRectangleNodesRecursive(SKCanvas canvas, LayoutNode node, SKPaint fillPaint, SKPaint strokePaint, SKPaint textPaint, Single cornerRadius)
+    {
+        // Use cached color
+        var nodeColor = _nodeColorCache[node.Value];
+        var fillColor = nodeColor.WithAlpha(100);
+
+        // Update paint properties
+        fillPaint.Color = fillColor;
+        strokePaint.Color = nodeColor;
+
+        var rect = new SKRect(node.X, node.Y, node.X + node.Width, node.Y + node.Height);
+        using var roundRect = new SKRoundRect(rect, cornerRadius, cornerRadius);
+
+        canvas.DrawRoundRect(roundRect, fillPaint);
+        canvas.DrawRoundRect(roundRect, strokePaint);
+
+        // Draw node text (value)
+        Single textX = node.X + (node.Width / 2.0f);
+        Single textY = node.Y + (node.Height / 2.0f) + (textPaint.TextSize / 3.0f); // Adjust for baseline
+
+        canvas.DrawText(node.Value.ToString(), textX, textY, textPaint);
+
+        // Recursively draw child nodes
+        foreach (var child in node.Children)
+        {
+            DrawRectangleNodesRecursive(canvas, child, fillPaint, strokePaint, textPaint, cornerRadius);
+        }
     }
 
     private Int32 CountNodes(LayoutNode node)
@@ -289,6 +445,12 @@ public class EnhancedPngExporter
 
     private SKColor CalculateLineColor(BigInteger nodeValue, TreeMetrics metrics)
     {
+        // Check cache first for performance
+        if (_lineColorCache.TryGetValue(nodeValue, out var cachedColor))
+        {
+            return cachedColor;
+        }
+
         // Color depends linearly on log(longest path)
         var pathLength = metrics.PathLengths.GetValueOrDefault(nodeValue, 0);
         var maxPathLength = metrics.LongestPath;
@@ -313,6 +475,12 @@ public class EnhancedPngExporter
 
     private Single CalculateLineWidth(BigInteger nodeValue, TreeMetrics metrics)
     {
+        // Check cache first for performance
+        if (_lineWidthCache.TryGetValue(nodeValue, out var cachedWidth))
+        {
+            return cachedWidth;
+        }
+
         // Thickness depends linearly on how often the path is traversed
         var traversalCount = metrics.TraversalCounts.GetValueOrDefault(nodeValue, 1);
         var maxTraversalCount = metrics.TraversalCounts.Values.Max();
@@ -329,6 +497,12 @@ public class EnhancedPngExporter
 
     private SKColor CalculateNodeColor(BigInteger nodeValue, TreeMetrics metrics)
     {
+        // Check cache first for performance
+        if (_nodeColorCache.TryGetValue(nodeValue, out var cachedColor))
+        {
+            return cachedColor;
+        }
+
         // Color depends on log(longest path) - same as line color but slightly different for nodes
         var pathLength = metrics.PathLengths.GetValueOrDefault(nodeValue, 0);
         var maxPathLength = metrics.LongestPath;
@@ -353,6 +527,12 @@ public class EnhancedPngExporter
 
     private Single CalculateNodeRadius(BigInteger nodeValue, TreeMetrics metrics)
     {
+        // Check cache first for performance
+        if (_nodeRadiusCache.TryGetValue(nodeValue, out var cachedRadius))
+        {
+            return cachedRadius;
+        }
+
         // Radius depends on traversal frequency
         var traversalCount = metrics.TraversalCounts.GetValueOrDefault(nodeValue, 1);
         var maxTraversalCount = metrics.TraversalCounts.Values.Max();
