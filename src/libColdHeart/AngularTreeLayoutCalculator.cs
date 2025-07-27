@@ -11,6 +11,8 @@ public class AngularTreeLayoutCalculator
 {
     private const Single DefaultNodeWidth = 60.0f;
     private const Single DefaultNodeHeight = 30.0f;
+    private const Single DefaultEdgeLength = 80.0f;
+    private const Single BaseEdgeLength = 200.0f;
 
     public LayoutNode CalculateLayout(TreeNode root, AngularVisualizationConfig? config = null)
     {
@@ -247,11 +249,11 @@ public class AngularTreeLayoutCalculator
 
         if (furthestDistance <= 1)
         {
-            return 80.0f; // Default edge length for single node or very small trees
+            return DefaultEdgeLength; // Default edge length for single node or very small trees
         }
 
         // Use natural logarithm and scale appropriately
-        Single baseLength = 200.0f; // Base scaling factor
+        Single baseLength = BaseEdgeLength; // Base scaling factor
         Single scaleFactor = 1.0f / (Single)Math.Log(furthestDistance + 1);
 
         return baseLength * scaleFactor;

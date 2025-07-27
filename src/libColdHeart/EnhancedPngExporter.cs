@@ -18,8 +18,13 @@ public enum NodeStyle
 public class EnhancedPngExporter
 {
     private const Single BaseLineStrokeWidth = 1.0f;
+    private const String WhiteColorHex = "#ffffff";
+    private const Byte NodeGreenColorComponent = 80;
+    private const Byte LineGreenColorComponent = 64;
+    private const Byte TransparentBorderAlpha = 180;
+    private const Byte TransparentFillAlpha = 100;
 
-    private static readonly SKColor BackgroundColor = SKColor.Parse("#ffffff"); // White background as required
+    private static readonly SKColor BackgroundColor = SKColor.Parse(WhiteColorHex); // White background as required
 
     // Cache for expensive calculations to avoid repeated computation
     private readonly ConcurrentDictionary<BigInteger, SKColor> _nodeColorCache = new();
@@ -58,7 +63,11 @@ public class EnhancedPngExporter
         Single originalHeight = bounds.Height + (2 * margin);
 
         // Check for reasonable image size limits and apply scaling if necessary
+        // MAX_DIMENSION: Maximum width/height for a single image dimension in most graphics systems
+        // This prevents memory allocation failures and ensures compatibility across different platforms
         const Int32 MAX_DIMENSION = 32767;
+        // MAX_PIXELS: Reasonable limit for total pixel count to prevent excessive memory usage
+        // This helps avoid out-of-memory exceptions for very large visualizations
         const Int64 MAX_PIXELS = 100_000_000;
 
         Single scale = 1.0f;
@@ -132,19 +141,6 @@ public class EnhancedPngExporter
         _nodeRadiusCache.Clear();
         _flattenedNodes = null;
         _cachedBounds = null;
-    }
-
-    private void PrecomputeVisualProperties(List<LayoutNode> allNodes, TreeMetrics metrics, AngularVisualizationConfig config)
-    {
-        // Use parallel processing to compute all visual properties upfront
-        Parallel.ForEach(allNodes, node =>
-        {
-            var nodeValue = node.Value;
-            _nodeColorCache[nodeValue] = CalculateNodeColor(nodeValue, metrics, config);
-            _lineColorCache[nodeValue] = CalculateLineColor(nodeValue, metrics, config);
-            _lineWidthCache[nodeValue] = CalculateLineWidth(nodeValue, metrics, config);
-            _nodeRadiusCache[nodeValue] = CalculateNodeRadius(nodeValue, metrics, config);
-        });
     }
 
     private void PrecomputeVisualPropertiesOptimized(LayoutNode[] allNodes, TreeMetrics metrics, AngularVisualizationConfig config)
@@ -415,7 +411,7 @@ public class EnhancedPngExporter
 
         // Update paint properties
         fillPaint.Color = nodeColor;
-        borderPaint.Color = nodeColor.WithAlpha(180); // Slightly transparent border
+        borderPaint.Color = nodeColor.WithAlpha(TransparentBorderAlpha); // Slightly transparent border
 
         Single centerX = node.X + (node.Width / 2.0f);
         Single centerY = node.Y + (node.Height / 2.0f);
@@ -447,7 +443,7 @@ public class EnhancedPngExporter
 
         // Update paint properties
         fillPaint.Color = nodeColor;
-        borderPaint.Color = nodeColor.WithAlpha(180); // Slightly transparent border
+        borderPaint.Color = nodeColor.WithAlpha(TransparentBorderAlpha); // Slightly transparent border
 
         Single centerX = node.X + (node.Width / 2.0f);
         Single centerY = node.Y + (node.Height / 2.0f);
@@ -507,7 +503,7 @@ public class EnhancedPngExporter
     {
         // Use cached color
         var nodeColor = _nodeColorCache[node.Value];
-        var fillColor = nodeColor.WithAlpha(100);
+        var fillColor = nodeColor.WithAlpha(TransparentFillAlpha);
 
         // Update paint properties
         fillPaint.Color = fillColor;
@@ -545,7 +541,7 @@ public class EnhancedPngExporter
     {
         // Use cached color
         var nodeColor = _nodeColorCache[node.Value];
-        var fillColor = nodeColor.WithAlpha(100);
+        var fillColor = nodeColor.WithAlpha(TransparentFillAlpha);
 
         // Update paint properties
         fillPaint.Color = fillColor;
@@ -647,7 +643,7 @@ public class EnhancedPngExporter
         // Interpolate between blue (low intensity) and red (high intensity)
         Byte red = (Byte)(impactAdjustedIntensity * 255);
         Byte blue = (Byte)((1.0f - impactAdjustedIntensity) * 255);
-        Byte green = 80; // Keep some green for visual distinction
+        Byte green = NodeGreenColorComponent; // Keep some green for visual distinction
 
         return new SKColor(red, green, blue);
     }
@@ -674,7 +670,7 @@ public class EnhancedPngExporter
         // Interpolate between blue (low intensity) and red (high intensity)
         Byte red = (Byte)(impactAdjustedIntensity * 255);
         Byte blue = (Byte)((1.0f - impactAdjustedIntensity) * 255);
-        Byte green = 64; // Keep some green for visual distinction
+        Byte green = LineGreenColorComponent; // Keep some green for visual distinction
 
         return new SKColor(red, green, blue);
     }
@@ -752,6 +748,8 @@ public class EnhancedPngExporter
         Single minY = Single.MaxValue, maxY = Single.MinValue;
 
         // Process in chunks for better cache performance
+        // Chunk size of 1000 provides good balance between parallelization overhead
+        // and cache locality for typical tree sizes
         const Int32 chunkSize = 1000;
         var chunks = Enumerable.Range(0, (allNodes.Length + chunkSize - 1) / chunkSize)
             .Select(i => new { Start = i * chunkSize, End = Math.Min((i + 1) * chunkSize, allNodes.Length) });
