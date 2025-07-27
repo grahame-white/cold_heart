@@ -9,11 +9,10 @@ public class HelpTextConsistencyTests
     [Test]
     public void HelpText_DefaultValues_MatchActualDefaults()
     {
-        var parser = new CommandLineParser();
         var defaultOptions = new CommandLineOptions();
         var defaultConfig = new AngularVisualizationConfig();
 
-        // Parse empty args to get defaults (validates parser works with empty input)
+        // Verify that default values in help text match actual defaults
 
         Assert.Multiple(() =>
         {
