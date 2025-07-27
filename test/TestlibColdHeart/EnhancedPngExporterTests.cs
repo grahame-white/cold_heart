@@ -411,7 +411,7 @@ public class EnhancedPngExporterTests
         }
     }
 
-    [TestCaseSource(nameof(NodeStyleTestCases))]
+    [TestCaseSource(nameof(GetNodeStyleTestCases))]
     public void ExportToPng_WithDifferentNodeStyles_ProducesValidFiles(NodeStyle nodeStyle)
     {
         _generator.Add(2);
@@ -436,13 +436,13 @@ public class EnhancedPngExporterTests
         }
     }
 
-    private static System.Collections.IEnumerable NodeStyleTestCases()
+    private static System.Collections.IEnumerable GetNodeStyleTestCases()
     {
         yield return new TestCaseData(NodeStyle.Circle);
         yield return new TestCaseData(NodeStyle.Rectangle);
     }
 
-    [TestCaseSource(nameof(FilterConfigurationTestCases))]
+    [TestCaseSource(nameof(GetFilterConfigurationTestCases))]
     public void ExportToPng_WithPathFiltering_HandlesFilteringCorrectly(AngularVisualizationConfig config)
     {
         for (BigInteger i = 2; i <= 10; i++)
@@ -466,7 +466,7 @@ public class EnhancedPngExporterTests
         }
     }
 
-    private static System.Collections.IEnumerable FilterConfigurationTestCases()
+    private static System.Collections.IEnumerable GetFilterConfigurationTestCases()
     {
         yield return new TestCaseData(new AngularVisualizationConfig { RenderLongestPaths = 3 });
         yield return new TestCaseData(new AngularVisualizationConfig { RenderMostTraversedPaths = 5 });

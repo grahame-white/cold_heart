@@ -100,7 +100,7 @@ public class TreeNodeTests
         Assert.That(node.Value, Is.EqualTo(minValue));
     }
 
-    [TestCaseSource(nameof(VariousBigIntegerValues))]
+    [TestCaseSource(nameof(GetVariousBigIntegerValues))]
     public void Constructor_WithVariousValues_SetsValueCorrectly(BigInteger value)
     {
         var node = new TreeNode(value);
@@ -108,7 +108,7 @@ public class TreeNodeTests
         Assert.That(node.Value, Is.EqualTo(value));
     }
 
-    private static System.Collections.IEnumerable VariousBigIntegerValues()
+    private static System.Collections.IEnumerable GetVariousBigIntegerValues()
     {
         yield return new TestCaseData(BigInteger.Zero);
         yield return new TestCaseData(BigInteger.One);
@@ -276,7 +276,7 @@ public class EdgeCaseTests
         Assert.DoesNotThrow(() => config.Validate());
     }
 
-    [TestCaseSource(nameof(InvalidConfigTestCases))]
+    [TestCaseSource(nameof(GetInvalidConfigTestCases))]
     public void AngularVisualizationConfig_WithInvalidValues_ThrowsExpectedException(
         Single thicknessImpact, Single colorImpact, Single maxLineWidth, Type expectedExceptionType)
     {
@@ -290,7 +290,7 @@ public class EdgeCaseTests
         Assert.Throws(expectedExceptionType, () => config.Validate());
     }
 
-    private static System.Collections.IEnumerable InvalidConfigTestCases()
+    private static System.Collections.IEnumerable GetInvalidConfigTestCases()
     {
         yield return new TestCaseData(-0.1f, 1.0f, 8.0f, typeof(ArgumentOutOfRangeException)); // Negative thickness
         yield return new TestCaseData(1.0f, 0.0f, 8.0f, typeof(ArgumentOutOfRangeException)); // Zero color impact

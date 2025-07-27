@@ -231,7 +231,7 @@ public class AngularVisualizationConfigTests
         Assert.That(ex.ParamName, Is.EqualTo("MaxLineWidth"));
     }
 
-    [TestCaseSource(nameof(SinglePathFilterTestCases))]
+    [TestCaseSource(nameof(GetSinglePathFilterTestCases))]
     public void Validate_WithSinglePathFilter_DoesNotThrow(Int32? longestPaths, Int32? mostTraversedPaths, Int32? leastTraversedPaths, Int32? randomPaths)
     {
         var config = new AngularVisualizationConfig
@@ -245,7 +245,7 @@ public class AngularVisualizationConfigTests
         Assert.DoesNotThrow(() => config.Validate());
     }
 
-    private static System.Collections.IEnumerable SinglePathFilterTestCases()
+    private static System.Collections.IEnumerable GetSinglePathFilterTestCases()
     {
         yield return new TestCaseData(10, null, null, null);
         yield return new TestCaseData(null, 20, null, null);
@@ -253,7 +253,7 @@ public class AngularVisualizationConfigTests
         yield return new TestCaseData(null, null, null, 30);
     }
 
-    [TestCaseSource(nameof(ValidBoundaryTestCases))]
+    [TestCaseSource(nameof(GetValidBoundaryTestCases))]
     public void Validate_WithBoundaryValues_DoesNotThrow(Single thicknessImpact, Single colorImpact, Single maxLineWidth)
     {
         var config = new AngularVisualizationConfig
@@ -266,7 +266,7 @@ public class AngularVisualizationConfigTests
         Assert.DoesNotThrow(() => config.Validate());
     }
 
-    private static System.Collections.IEnumerable ValidBoundaryTestCases()
+    private static System.Collections.IEnumerable GetValidBoundaryTestCases()
     {
         yield return new TestCaseData(0.0f, 0.001f, 0.001f); // Zero thickness impact allowed
         yield return new TestCaseData(100.0f, 10.0f, 50.0f); // High values allowed
