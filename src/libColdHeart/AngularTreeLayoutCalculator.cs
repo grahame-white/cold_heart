@@ -34,9 +34,9 @@ public class AngularTreeLayoutCalculator
         var traversalCounts = new ConcurrentDictionary<BigInteger, Int32>();
         var allNodes = new ConcurrentBag<BigInteger>();
 
-        // Calculate both metrics in parallel
-        var pathTask = Task.Run(() => CalculatePathLengths(root, 0, pathLengths, allNodes));
-        var traversalTask = Task.Run(() => CalculateTraversalCounts(root, traversalCounts));
+        // Calculate both metrics in parallel with optimized algorithms
+        var pathTask = Task.Run(() => CalculatePathLengthsOptimized(root, pathLengths, allNodes));
+        var traversalTask = Task.Run(() => CalculateTraversalCountsOptimized(root, traversalCounts));
 
         // Wait for both calculations to complete
         Task.WaitAll(pathTask, traversalTask);
@@ -63,6 +63,41 @@ public class AngularTreeLayoutCalculator
         CalculatePathLengths(node.RightChild, currentDepth + 1, pathLengths, allNodes);
     }
 
+    private void CalculatePathLengthsOptimized(TreeNode root,
+        ConcurrentDictionary<BigInteger, Int32> pathLengths,
+        ConcurrentBag<BigInteger> allNodes)
+    {
+        // Use iterative approach with concurrent processing for better performance
+        var processedNodes = new ConcurrentDictionary<BigInteger, bool>();
+        var workStack = new ConcurrentStack<(TreeNode Node, Int32 Depth)>();
+        workStack.Push((root, 0));
+
+        // Process nodes using parallel tasks
+        var tasks = Enumerable.Range(0, Environment.ProcessorCount).Select(_ => Task.Run(() =>
+        {
+            while (workStack.TryPop(out var item))
+            {
+                var (node, depth) = item;
+
+                // Skip if already processed (can happen due to concurrent access)
+                if (!processedNodes.TryAdd(node.Value, true))
+                    continue;
+
+                // Process current node
+                pathLengths.AddOrUpdate(node.Value, depth, (key, existingDepth) => Math.Min(existingDepth, depth));
+                allNodes.Add(node.Value);
+
+                // Add children to work stack
+                if (node.LeftChild != null)
+                    workStack.Push((node.LeftChild, depth + 1));
+                if (node.RightChild != null)
+                    workStack.Push((node.RightChild, depth + 1));
+            }
+        })).ToArray();
+
+        Task.WaitAll(tasks);
+    }
+
     private void CalculateTraversalCounts(TreeNode? node, ConcurrentDictionary<BigInteger, Int32> traversalCounts)
     {
         if (node == null) return;
@@ -74,6 +109,58 @@ public class AngularTreeLayoutCalculator
         // Recursively calculate for children
         CalculateTraversalCounts(node.LeftChild, traversalCounts);
         CalculateTraversalCounts(node.RightChild, traversalCounts);
+    }
+
+    private void CalculateTraversalCountsOptimized(TreeNode root, ConcurrentDictionary<BigInteger, Int32> traversalCounts)
+    {
+        // Use bottom-up approach with memoization for better performance
+        var leafCountMemo = new ConcurrentDictionary<BigInteger, Int32>();
+
+        // First pass: collect all nodes in post-order for bottom-up processing
+        var allNodes = new List<TreeNode>();
+        CollectNodesPostOrder(root, allNodes);
+
+        // Process nodes in parallel, with leaf counts computed bottom-up
+        Parallel.ForEach(allNodes, node =>
+        {
+            var leafCount = CountLeavesInSubtreeOptimized(node, leafCountMemo);
+            traversalCounts[node.Value] = leafCount;
+        });
+    }
+
+    private void CollectNodesPostOrder(TreeNode? node, List<TreeNode> nodes)
+    {
+        if (node == null) return;
+
+        CollectNodesPostOrder(node.LeftChild, nodes);
+        CollectNodesPostOrder(node.RightChild, nodes);
+        nodes.Add(node);
+    }
+
+    private Int32 CountLeavesInSubtreeOptimized(TreeNode? node, ConcurrentDictionary<BigInteger, Int32> memo)
+    {
+        if (node == null) return 0;
+
+        // Check memo first
+        if (memo.TryGetValue(node.Value, out var cachedCount))
+            return cachedCount;
+
+        Int32 result;
+        if (node.LeftChild == null && node.RightChild == null)
+        {
+            // Leaf node
+            result = 1;
+        }
+        else
+        {
+            // Internal node - sum children (will be available due to post-order processing)
+            var leftCount = node.LeftChild != null ? memo.GetValueOrDefault(node.LeftChild.Value, CountLeavesInSubtreeOptimized(node.LeftChild, memo)) : 0;
+            var rightCount = node.RightChild != null ? memo.GetValueOrDefault(node.RightChild.Value, CountLeavesInSubtreeOptimized(node.RightChild, memo)) : 0;
+            result = leftCount + rightCount;
+        }
+
+        memo[node.Value] = result;
+        return result;
     }
 
     private Int32 CountLeavesInSubtree(TreeNode? node)

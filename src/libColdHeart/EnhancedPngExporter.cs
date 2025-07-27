@@ -28,17 +28,21 @@ public class EnhancedPngExporter
     private readonly ConcurrentDictionary<BigInteger, Single> _lineWidthCache = new();
     private readonly ConcurrentDictionary<BigInteger, Single> _nodeRadiusCache = new();
 
+    // Additional caches for optimized processing
+    private LayoutNode[]? _flattenedNodes;
+    private (Single MinX, Single MinY, Single Width, Single Height)? _cachedBounds;
+
     public void ExportToPng(LayoutNode rootLayout, TreeMetrics metrics, String filePath, NodeStyle nodeStyle = NodeStyle.Circle, Action<String>? progressCallback = null)
     {
         // Clear caches for new export
         ClearCaches();
 
         progressCallback?.Invoke("Precomputing visual properties...");
-        var allNodes = GetAllNodes(rootLayout);
-        PrecomputeVisualProperties(allNodes, metrics);
+        var allNodes = GetAllNodesFlattened(rootLayout);
+        PrecomputeVisualPropertiesOptimized(allNodes, metrics);
 
         progressCallback?.Invoke("Calculating image bounds...");
-        var bounds = CalculateBounds(rootLayout);
+        var bounds = CalculateBoundsOptimized(rootLayout);
 
         // Add margins
         Single margin = 50.0f;
@@ -118,6 +122,8 @@ public class EnhancedPngExporter
         _lineColorCache.Clear();
         _lineWidthCache.Clear();
         _nodeRadiusCache.Clear();
+        _flattenedNodes = null;
+        _cachedBounds = null;
     }
 
     private void PrecomputeVisualProperties(List<LayoutNode> allNodes, TreeMetrics metrics)
@@ -133,13 +139,35 @@ public class EnhancedPngExporter
         });
     }
 
+    private void PrecomputeVisualPropertiesOptimized(LayoutNode[] allNodes, TreeMetrics metrics)
+    {
+        // Use parallel processing with array-based access for better cache locality
+        Parallel.For(0, allNodes.Length, i =>
+        {
+            var node = allNodes[i];
+            var nodeValue = node.Value;
+
+            // Batch calculate all properties for this node in one go to minimize dictionary lookups
+            var nodeColor = CalculateNodeColorDirect(nodeValue, metrics);
+            var lineColor = CalculateLineColorDirect(nodeValue, metrics);
+            var lineWidth = CalculateLineWidthDirect(nodeValue, metrics);
+            var nodeRadius = CalculateNodeRadiusDirect(nodeValue, metrics);
+
+            // Update caches atomically
+            _nodeColorCache[nodeValue] = nodeColor;
+            _lineColorCache[nodeValue] = lineColor;
+            _lineWidthCache[nodeValue] = lineWidth;
+            _nodeRadiusCache[nodeValue] = nodeRadius;
+        });
+    }
+
     private void DrawEnhancedConnections(SKCanvas canvas, LayoutNode node, TreeMetrics metrics, Action<String>? progressCallback = null)
     {
         if (progressCallback != null)
         {
             var totalNodes = CountNodes(node);
             var processedNodes = 0;
-            DrawEnhancedConnectionsWithProgress(canvas, node, metrics, progressCallback, totalNodes, ref processedNodes);
+            DrawEnhancedConnectionsBatched(canvas, node, progressCallback, totalNodes, ref processedNodes);
         }
         else
         {
@@ -194,6 +222,71 @@ public class EnhancedPngExporter
         };
 
         DrawConnectionsWithProgressRecursive(canvas, node, paint, progressCallback, totalNodes, ref processedNodes);
+    }
+
+    private void DrawEnhancedConnectionsBatched(SKCanvas canvas, LayoutNode node, Action<String> progressCallback, Int32 totalNodes, ref Int32 processedNodes)
+    {
+        // Collect all connections and group by similar properties for batch drawing
+        var connections = CollectAllConnections(node);
+
+        // Group connections by line width and color for more efficient drawing
+        var groupedConnections = connections
+            .GroupBy(c => new { Color = _lineColorCache[c.Child.Value], Width = _lineWidthCache[c.Child.Value] })
+            .ToArray();
+
+        using var paint = new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            IsAntialias = true
+        };
+
+        foreach (var group in groupedConnections)
+        {
+            // Set paint properties once per group
+            paint.Color = group.Key.Color;
+            paint.StrokeWidth = group.Key.Width;
+
+            var connectionsInGroup = group.ToArray();
+
+            // Draw all connections in this group
+            foreach (var connection in connectionsInGroup)
+            {
+                canvas.DrawLine(connection.StartX, connection.StartY, connection.EndX, connection.EndY, paint);
+
+                processedNodes++;
+
+                // Report progress every 50 nodes
+                if (processedNodes % 50 == 0 || processedNodes == totalNodes)
+                {
+                    var percentage = (Int32)((processedNodes / (Single)totalNodes) * 100);
+                    progressCallback($"Drawing connections... {processedNodes}/{totalNodes} ({percentage}%)");
+                }
+            }
+        }
+    }
+
+    private List<(LayoutNode Parent, LayoutNode Child, Single StartX, Single StartY, Single EndX, Single EndY)> CollectAllConnections(LayoutNode node)
+    {
+        var connections = new List<(LayoutNode, LayoutNode, Single, Single, Single, Single)>();
+
+        CollectConnectionsRecursive(node, connections);
+
+        return connections;
+    }
+
+    private void CollectConnectionsRecursive(LayoutNode node, List<(LayoutNode, LayoutNode, Single, Single, Single, Single)> connections)
+    {
+        foreach (var child in node.Children)
+        {
+            Single parentCenterX = node.X + (node.Width / 2.0f);
+            Single parentCenterY = node.Y + (node.Height / 2.0f);
+            Single childCenterX = child.X + (child.Width / 2.0f);
+            Single childCenterY = child.Y + (child.Height / 2.0f);
+
+            connections.Add((node, child, parentCenterX, parentCenterY, childCenterX, childCenterY));
+
+            CollectConnectionsRecursive(child, connections);
+        }
     }
 
     private void DrawConnectionsWithProgressRecursive(SKCanvas canvas, LayoutNode node, SKPaint paint, Action<String> progressCallback, Int32 totalNodes, ref Int32 processedNodes)
@@ -533,6 +626,76 @@ public class EnhancedPngExporter
             return cachedRadius;
         }
 
+        return CalculateNodeRadiusDirect(nodeValue, metrics);
+    }
+
+    // Direct calculation methods that bypass cache lookup for initial precomputation
+    private SKColor CalculateNodeColorDirect(BigInteger nodeValue, TreeMetrics metrics)
+    {
+        // Color depends on log(longest path) - same as line color but slightly different for nodes
+        var pathLength = metrics.PathLengths.GetValueOrDefault(nodeValue, 0);
+        var maxPathLength = metrics.LongestPath;
+
+        if (maxPathLength <= 1)
+        {
+            return SKColor.Parse("#4a90e2"); // Default blue
+        }
+
+        // Use logarithmic scaling for color intensity
+        Single logPathLength = (Single)Math.Log(pathLength + 1);
+        Single logMaxPathLength = (Single)Math.Log(maxPathLength + 1);
+        Single normalizedIntensity = logPathLength / logMaxPathLength;
+
+        // Interpolate between blue (low intensity) and red (high intensity)
+        Byte red = (Byte)(normalizedIntensity * 255);
+        Byte blue = (Byte)((1.0f - normalizedIntensity) * 255);
+        Byte green = 80; // Keep some green for visual distinction
+
+        return new SKColor(red, green, blue);
+    }
+
+    private SKColor CalculateLineColorDirect(BigInteger nodeValue, TreeMetrics metrics)
+    {
+        // Color depends linearly on log(longest path)
+        var pathLength = metrics.PathLengths.GetValueOrDefault(nodeValue, 0);
+        var maxPathLength = metrics.LongestPath;
+
+        if (maxPathLength <= 1)
+        {
+            return SKColor.Parse("#666666"); // Default gray
+        }
+
+        // Use logarithmic scaling for color intensity
+        Single logPathLength = (Single)Math.Log(pathLength + 1);
+        Single logMaxPathLength = (Single)Math.Log(maxPathLength + 1);
+        Single normalizedIntensity = logPathLength / logMaxPathLength;
+
+        // Interpolate between blue (low intensity) and red (high intensity)
+        Byte red = (Byte)(normalizedIntensity * 255);
+        Byte blue = (Byte)((1.0f - normalizedIntensity) * 255);
+        Byte green = 64; // Keep some green for visual distinction
+
+        return new SKColor(red, green, blue);
+    }
+
+    private Single CalculateLineWidthDirect(BigInteger nodeValue, TreeMetrics metrics)
+    {
+        // Thickness depends linearly on how often the path is traversed
+        var traversalCount = metrics.TraversalCounts.GetValueOrDefault(nodeValue, 1);
+        var maxTraversalCount = metrics.TraversalCounts.Values.Max();
+
+        if (maxTraversalCount <= 1)
+        {
+            return BaseLineStrokeWidth;
+        }
+
+        // Linear scaling based on traversal frequency
+        Single normalizedThickness = (Single)traversalCount / maxTraversalCount;
+        return BaseLineStrokeWidth + (normalizedThickness * (MaxStrokeWidth - BaseLineStrokeWidth));
+    }
+
+    private Single CalculateNodeRadiusDirect(BigInteger nodeValue, TreeMetrics metrics)
+    {
         // Radius depends on traversal frequency
         var traversalCount = metrics.TraversalCounts.GetValueOrDefault(nodeValue, 1);
         var maxTraversalCount = metrics.TraversalCounts.Values.Max();
@@ -565,6 +728,59 @@ public class EnhancedPngExporter
         return (minX, minY, maxX - minX, maxY - minY);
     }
 
+    private (Single MinX, Single MinY, Single Width, Single Height) CalculateBoundsOptimized(LayoutNode rootLayout)
+    {
+        // Use cached bounds if available
+        if (_cachedBounds.HasValue)
+            return _cachedBounds.Value;
+
+        var allNodes = GetAllNodesFlattened(rootLayout);
+
+        if (allNodes.Length == 0)
+        {
+            _cachedBounds = (0, 0, 0, 0);
+            return _cachedBounds.Value;
+        }
+
+        // Use parallel processing to find min/max values more efficiently
+        Single minX = Single.MaxValue, maxX = Single.MinValue;
+        Single minY = Single.MaxValue, maxY = Single.MinValue;
+
+        // Process in chunks for better cache performance
+        const Int32 chunkSize = 1000;
+        var chunks = Enumerable.Range(0, (allNodes.Length + chunkSize - 1) / chunkSize)
+            .Select(i => new { Start = i * chunkSize, End = Math.Min((i + 1) * chunkSize, allNodes.Length) });
+
+        var results = chunks.AsParallel().Select(chunk =>
+        {
+            Single chunkMinX = Single.MaxValue, chunkMaxX = Single.MinValue;
+            Single chunkMinY = Single.MaxValue, chunkMaxY = Single.MinValue;
+
+            for (Int32 j = chunk.Start; j < chunk.End; j++)
+            {
+                var node = allNodes[j];
+                chunkMinX = Math.Min(chunkMinX, node.X);
+                chunkMaxX = Math.Max(chunkMaxX, node.X + node.Width);
+                chunkMinY = Math.Min(chunkMinY, node.Y);
+                chunkMaxY = Math.Max(chunkMaxY, node.Y + node.Height);
+            }
+
+            return new { MinX = chunkMinX, MaxX = chunkMaxX, MinY = chunkMinY, MaxY = chunkMaxY };
+        }).ToArray();
+
+        // Combine results
+        foreach (var result in results)
+        {
+            minX = Math.Min(minX, result.MinX);
+            maxX = Math.Max(maxX, result.MaxX);
+            minY = Math.Min(minY, result.MinY);
+            maxY = Math.Max(maxY, result.MaxY);
+        }
+
+        _cachedBounds = (minX, minY, maxX - minX, maxY - minY);
+        return _cachedBounds.Value;
+    }
+
     private List<LayoutNode> GetAllNodes(LayoutNode node)
     {
         var nodes = new List<LayoutNode> { node };
@@ -575,5 +791,35 @@ public class EnhancedPngExporter
         }
 
         return nodes;
+    }
+
+    private LayoutNode[] GetAllNodesFlattened(LayoutNode rootLayout)
+    {
+        // Use cached flattened nodes if available
+        if (_flattenedNodes != null)
+            return _flattenedNodes;
+
+        // Count nodes first to pre-allocate array
+        var nodeCount = CountNodes(rootLayout);
+        _flattenedNodes = new LayoutNode[nodeCount];
+
+        // Flatten tree into array using iterative approach to avoid stack overflow
+        var index = 0;
+        var stack = new Stack<LayoutNode>();
+        stack.Push(rootLayout);
+
+        while (stack.Count > 0)
+        {
+            var current = stack.Pop();
+            _flattenedNodes[index++] = current;
+
+            // Add children in reverse order to maintain left-to-right processing
+            for (Int32 i = current.Children.Count - 1; i >= 0; i--)
+            {
+                stack.Push(current.Children[i]);
+            }
+        }
+
+        return _flattenedNodes;
     }
 }
