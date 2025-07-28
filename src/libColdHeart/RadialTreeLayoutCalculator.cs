@@ -90,38 +90,66 @@ public class RadialTreeLayoutCalculator
         layoutRoot.X = CENTER_X - layoutRoot.Width / 2.0f;
         layoutRoot.Y = CENTER_Y - layoutRoot.Height / 2.0f;
 
-        // Position nodes generation by generation
-        foreach (var generation in nodesByGeneration.Keys.OrderBy(g => g))
-        {
-            if (generation == 0) continue; // Root already positioned
-
-            var nodesInGeneration = nodesByGeneration[generation];
-            PositionGenerationNodes(nodesInGeneration, valueToLayoutNode, generation);
-        }
+        // Start positioning from root with initial angle 0 (top)
+        PositionNodeRecursively(layoutRoot, 0.0f, 0);
     }
 
-    private void PositionGenerationNodes(List<TreeNode> nodesInGeneration, Dictionary<BigInteger, LayoutNode> valueToLayoutNode, Int32 generation)
+    private void PositionNodeRecursively(LayoutNode node, Single angle, Int32 generation)
     {
-        if (nodesInGeneration.Count == 0) return;
-
-        // Sort nodes by value for consistent ordering
-        var sortedNodes = nodesInGeneration.OrderBy(n => n.Value).ToList();
-
-        // Calculate angular spacing to distribute nodes evenly around the circle
-        Single angleStep = 360.0f / Math.Max(sortedNodes.Count, 1);
-
-        // Position each node at even intervals around the circle
-        for (Int32 i = 0; i < sortedNodes.Count; i++)
+        // Position current node (if not root)
+        if (generation > 0)
         {
-            var treeNode = sortedNodes[i];
-            if (!valueToLayoutNode.TryGetValue(treeNode.Value, out var layoutNode))
-                continue;
+            PositionNodeAtAngle(node, angle, generation);
+        }
 
-            // Calculate angle (starting at 0° = top, going clockwise)
-            Single angle = i * angleStep;
+        // Position children based on number of children and parent angle
+        if (node.Children.Count == 1)
+        {
+            // Single child: continue in same direction
+            PositionNodeRecursively(node.Children[0], angle, generation + 1);
+        }
+        else if (node.Children.Count == 2)
+        {
+            // Two children: spread based on parent position
+            var sortedChildren = node.Children.OrderBy(child => child.Value).ToList();
 
-            // Position the node
-            PositionNodeAtAngle(layoutNode, angle, generation);
+            Single leftAngle, rightAngle;
+
+            if (generation == 0) // Root
+            {
+                // From root: first child (smaller value) at 270°, second at 90°
+                leftAngle = 270.0f;
+                rightAngle = 90.0f;
+            }
+            else
+            {
+                // From non-root: position children to avoid crossings
+                // This is a simplified strategy - may need refinement
+                if (angle == 0.0f) // Parent at top
+                {
+                    leftAngle = 270.0f; // Left
+                    rightAngle = 90.0f;  // Right
+                }
+                else if (angle == 90.0f) // Parent at right
+                {
+                    leftAngle = 45.0f;   // Upper right
+                    rightAngle = 135.0f; // Lower right
+                }
+                else if (angle == 270.0f) // Parent at left
+                {
+                    leftAngle = 315.0f;  // Upper left
+                    rightAngle = 225.0f; // Lower left
+                }
+                else
+                {
+                    // General case: symmetric spread
+                    leftAngle = NormalizeAngle(angle - 45.0f);
+                    rightAngle = NormalizeAngle(angle + 45.0f);
+                }
+            }
+
+            PositionNodeRecursively(sortedChildren[0], leftAngle, generation + 1);
+            PositionNodeRecursively(sortedChildren[1], rightAngle, generation + 1);
         }
     }
 
@@ -140,6 +168,15 @@ public class RadialTreeLayoutCalculator
         node.X = x;
         node.Y = y;
     }
+
+    private Single NormalizeAngle(Single angle)
+    {
+        while (angle < 0) angle += 360.0f;
+        while (angle >= 360.0f) angle -= 360.0f;
+        return angle;
+    }
+
+
 
     private Dictionary<BigInteger, LayoutNode> BuildValueToLayoutNodeMapping(LayoutNode root)
     {
