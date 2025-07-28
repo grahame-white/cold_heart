@@ -86,86 +86,97 @@ public class RadialTreeLayoutCalculator
         // Build a mapping from TreeNode values to LayoutNodes for quick lookup
         var valueToLayoutNode = BuildValueToLayoutNodeMapping(layoutRoot);
 
-        foreach (var generationEntry in nodesByGeneration.OrderBy(kvp => kvp.Key))
-        {
-            var generation = generationEntry.Key;
-            var nodesInGeneration = generationEntry.Value;
+        // Position root at center
+        layoutRoot.X = CENTER_X - layoutRoot.Width / 2.0f;
+        layoutRoot.Y = CENTER_Y - layoutRoot.Height / 2.0f;
 
-            if (generation == 0)
+        // Start positioning from root with initial angle 0 (top)
+        PositionNodeRecursively(layoutRoot, 0.0f, 0);
+    }
+
+    private void PositionNodeRecursively(LayoutNode node, Single angle, Int32 generation)
+    {
+        // Position current node (if not root)
+        if (generation > 0)
+        {
+            PositionNodeAtAngle(node, angle, generation);
+        }
+
+        // Position children based on number of children and parent angle
+        if (node.Children.Count == 1)
+        {
+            // Single child: continue in same direction
+            PositionNodeRecursively(node.Children[0], angle, generation + 1);
+        }
+        else if (node.Children.Count == 2)
+        {
+            // Two children: spread based on parent position
+            var sortedChildren = node.Children.OrderBy(child => child.Value).ToList();
+
+            Single leftAngle, rightAngle;
+
+            if (generation == 0) // Root
             {
-                // Position root at center
-                layoutRoot.X = CENTER_X - layoutRoot.Width / 2.0f;
-                layoutRoot.Y = CENTER_Y - layoutRoot.Height / 2.0f;
+                // From root: first child (smaller value) at 270°, second at 90°
+                leftAngle = 270.0f;
+                rightAngle = 90.0f;
             }
             else
             {
-                // Calculate radius for this generation
-                Single radius = BASE_RADIUS + (generation - 1) * RADIUS_INCREMENT;
-
-                // For proper radial tree layout with placeholder spacing:
-                // Each generation can have at most 2^generation nodes in a binary tree
-                Int32 maxNodesAtGeneration = (Int32)Math.Pow(2, generation);
-
-                // Sort nodes to ensure consistent positioning
-                var sortedNodes = nodesInGeneration.OrderBy(n => n.Value).ToList();
-
-                // Calculate angular spacing between potential positions
-                Single angleIncrement = 360.0f / maxNodesAtGeneration;
-
-                // Assign each node to a specific slot to maintain placeholder spacing
-                var nodeSlots = AssignNodesToSlots(sortedNodes, maxNodesAtGeneration);
-
-                // Position each node at its assigned slot
-                for (Int32 slotIndex = 0; slotIndex < maxNodesAtGeneration; slotIndex++)
+                // From non-root: position children to avoid crossings
+                // This is a simplified strategy - may need refinement
+                if (angle == 0.0f) // Parent at top
                 {
-                    if (nodeSlots.ContainsKey(slotIndex))
-                    {
-                        var node = nodeSlots[slotIndex];
-                        if (valueToLayoutNode.TryGetValue(node.Value, out var layoutNode))
-                        {
-                            // Calculate angle for this slot (start from top: -90 degrees)
-                            Single angle = -90.0f + (slotIndex * angleIncrement);
-
-                            // Convert to radians for trigonometric calculations
-                            Single angleRadians = angle * (Single)Math.PI / 180.0f;
-
-                            // Calculate position on the circle
-                            Single x = CENTER_X + radius * (Single)Math.Cos(angleRadians) - layoutNode.Width / 2.0f;
-                            Single y = CENTER_Y + radius * (Single)Math.Sin(angleRadians) - layoutNode.Height / 2.0f;
-
-                            layoutNode.X = x;
-                            layoutNode.Y = y;
-                        }
-                    }
+                    leftAngle = 270.0f; // Left
+                    rightAngle = 90.0f;  // Right
+                }
+                else if (angle == 90.0f) // Parent at right
+                {
+                    leftAngle = 45.0f;   // Upper right
+                    rightAngle = 135.0f; // Lower right
+                }
+                else if (angle == 270.0f) // Parent at left
+                {
+                    leftAngle = 315.0f;  // Upper left
+                    rightAngle = 225.0f; // Lower left
+                }
+                else
+                {
+                    // General case: symmetric spread
+                    leftAngle = NormalizeAngle(angle - 45.0f);
+                    rightAngle = NormalizeAngle(angle + 45.0f);
                 }
             }
+
+            PositionNodeRecursively(sortedChildren[0], leftAngle, generation + 1);
+            PositionNodeRecursively(sortedChildren[1], rightAngle, generation + 1);
         }
     }
 
-    private Dictionary<Int32, TreeNode> AssignNodesToSlots(List<TreeNode> sortedNodes, Int32 maxSlots)
+    private void PositionNodeAtAngle(LayoutNode node, Single angle, Int32 generation)
     {
-        var nodeSlots = new Dictionary<Int32, TreeNode>();
-        
-        // Distribute nodes evenly across available slots
-        // This ensures even spacing with placeholder gaps for missing nodes
-        for (Int32 i = 0; i < sortedNodes.Count; i++)
-        {
-            // Calculate which slot this node should occupy
-            // Use floating point division to get even distribution, then round to nearest slot
-            Single exactSlot = (Single)i * maxSlots / sortedNodes.Count;
-            Int32 slotIndex = (Int32)Math.Round(exactSlot) % maxSlots;
-            
-            // Handle collision by finding next available slot
-            while (nodeSlots.ContainsKey(slotIndex))
-            {
-                slotIndex = (slotIndex + 1) % maxSlots;
-            }
-            
-            nodeSlots[slotIndex] = sortedNodes[i];
-        }
+        // Calculate radius for this generation
+        Single radius = BASE_RADIUS + (generation - 1) * RADIUS_INCREMENT;
 
-        return nodeSlots;
+        // Convert angle to radians (0 degrees = top, clockwise)
+        Single angleRadians = angle * (Single)Math.PI / 180.0f;
+
+        // Calculate position on the circle
+        Single x = CENTER_X + radius * (Single)Math.Sin(angleRadians) - node.Width / 2.0f;
+        Single y = CENTER_Y - radius * (Single)Math.Cos(angleRadians) - node.Height / 2.0f;
+
+        node.X = x;
+        node.Y = y;
     }
+
+    private Single NormalizeAngle(Single angle)
+    {
+        while (angle < 0) angle += 360.0f;
+        while (angle >= 360.0f) angle -= 360.0f;
+        return angle;
+    }
+
+
 
     private Dictionary<BigInteger, LayoutNode> BuildValueToLayoutNodeMapping(LayoutNode root)
     {
