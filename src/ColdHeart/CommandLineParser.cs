@@ -13,7 +13,9 @@ public class CommandLineParser
         ["--svg"] = "Export tree visualization to SVG format",
         ["--png"] = "Export tree visualization to PNG format (traditional layout)",
         ["--png-angular"] = "Export tree visualization to PNG format (angular layout)",
+        ["--png-radial"] = "Export tree visualization to PNG format (radial layout)",
         ["--angular-node-style"] = "Node style for angular PNG (circle, rectangle, or none, default: circle)",
+        ["--radial-node-style"] = "Node style for radial PNG (circle, rectangle, or none, default: circle)",
         ["--angular-left-turn"] = "Left turn angle for even nodes (default: -8.65)",
         ["--angular-right-turn"] = "Right turn angle for odd nodes (default: 16.0)",
         ["--angular-thickness-impact"] = "Impact of traversals on line thickness (default: 1.0, 0 = no impact)",
@@ -51,8 +53,14 @@ public class CommandLineParser
                 case "--png-angular":
                     options.AngularPngFile = GetRequiredArgument(args, ref i, "--png-angular requires a filename");
                     break;
+                case "--png-radial":
+                    options.RadialPngFile = GetRequiredArgument(args, ref i, "--png-radial requires a filename");
+                    break;
                 case "--angular-node-style":
-                    ParseNodeStyle(args, ref i, options);
+                    ParseAngularNodeStyle(args, ref i, options);
+                    break;
+                case "--radial-node-style":
+                    ParseRadialNodeStyle(args, ref i, options);
                     break;
                 case "--angular-left-turn":
                     options.AngularConfig.LeftTurnAngle = ParseFloat(args, ref i, "--angular-left-turn", "left turn angle");
@@ -138,7 +146,7 @@ public class CommandLineParser
         throw new ArgumentException($"Error: Invalid {parameterName} '{value}'. Must be a positive number.");
     }
 
-    private void ParseNodeStyle(String[] args, ref Int32 index, CommandLineOptions options)
+    private void ParseAngularNodeStyle(String[] args, ref Int32 index, CommandLineOptions options)
     {
         var styleArg = GetRequiredArgument(args, ref index, "--angular-node-style requires a style (circle, rectangle, or none)");
         switch (styleArg.ToLowerInvariant())
@@ -151,6 +159,25 @@ public class CommandLineParser
                 break;
             case "none":
                 options.AngularNodeStyle = NodeStyle.None;
+                break;
+            default:
+                throw new ArgumentException($"Error: Invalid node style '{styleArg}'. Valid options are: circle, rectangle, none");
+        }
+    }
+
+    private void ParseRadialNodeStyle(String[] args, ref Int32 index, CommandLineOptions options)
+    {
+        var styleArg = GetRequiredArgument(args, ref index, "--radial-node-style requires a style (circle, rectangle, or none)");
+        switch (styleArg.ToLowerInvariant())
+        {
+            case "circle":
+                options.RadialNodeStyle = NodeStyle.Circle;
+                break;
+            case "rectangle":
+                options.RadialNodeStyle = NodeStyle.Rectangle;
+                break;
+            case "none":
+                options.RadialNodeStyle = NodeStyle.None;
                 break;
             default:
                 throw new ArgumentException($"Error: Invalid node style '{styleArg}'. Valid options are: circle, rectangle, none");
@@ -194,7 +221,9 @@ public class CommandLineParser
         Console.WriteLine("  ColdHeart --load sequence.json --svg tree.svg");
         Console.WriteLine("  ColdHeart --svg tree.svg --png tree.png");
         Console.WriteLine("  ColdHeart --png-angular angular_tree.png");
+        Console.WriteLine("  ColdHeart --png-radial radial_tree.png");
         Console.WriteLine("  ColdHeart --png-angular angular_tree.png --angular-node-style rectangle");
+        Console.WriteLine("  ColdHeart --png-radial radial_tree.png --radial-node-style none");
         Console.WriteLine("  ColdHeart --png-angular angular_tree.png --angular-node-style none");
         Console.WriteLine("  ColdHeart --png-angular angular_tree.png --angular-draw-order least-to-most-traversed");
         Console.WriteLine("  ColdHeart --sequences 2000 --png-angular angular_tree.png");

@@ -69,7 +69,7 @@ internal class Program
             }
 
             // Export visualizations if specified
-            if (options.SvgFile != null || options.PngFile != null || options.AngularPngFile != null)
+            if (options.SvgFile != null || options.PngFile != null || options.AngularPngFile != null || options.RadialPngFile != null)
             {
                 // Validate angular configuration if angular PNG is requested
                 if (options.AngularPngFile != null)
@@ -109,6 +109,16 @@ internal class Program
                         Console.WriteLine($"  {progress}");
                     });
                     Console.WriteLine("Angular PNG export completed successfully.");
+                }
+
+                if (options.RadialPngFile != null)
+                {
+                    Console.WriteLine($"Exporting radial tree visualization to PNG '{options.RadialPngFile}'...");
+                    visualizer.ExportToRadialPng(generator.Root, options.RadialPngFile, options.RadialNodeStyle, progress =>
+                    {
+                        Console.WriteLine($"  {progress}");
+                    });
+                    Console.WriteLine("Radial PNG export completed successfully.");
                 }
             }
 

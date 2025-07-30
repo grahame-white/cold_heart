@@ -8,6 +8,7 @@ public class TreeMapVisualizer
 {
     private readonly TreeLayoutCalculator _layoutCalculator;
     private readonly AngularTreeLayoutCalculator _angularLayoutCalculator;
+    private readonly RadialTreeLayoutCalculator _radialLayoutCalculator;
     private readonly SvgExporter _svgExporter;
     private readonly PngExporter _pngExporter;
     private readonly EnhancedPngExporter _enhancedPngExporter;
@@ -16,6 +17,7 @@ public class TreeMapVisualizer
     {
         _layoutCalculator = new TreeLayoutCalculator();
         _angularLayoutCalculator = new AngularTreeLayoutCalculator();
+        _radialLayoutCalculator = new RadialTreeLayoutCalculator();
         _svgExporter = new SvgExporter();
         _pngExporter = new PngExporter();
         _enhancedPngExporter = new EnhancedPngExporter();
@@ -29,6 +31,11 @@ public class TreeMapVisualizer
     public LayoutNode CalculateAngularLayout(TreeNode root)
     {
         return _angularLayoutCalculator.CalculateLayout(root);
+    }
+
+    public LayoutNode CalculateRadialLayout(TreeNode root)
+    {
+        return _radialLayoutCalculator.CalculateLayout(root);
     }
 
     public async Task ExportToSvgAsync(TreeNode root, String filePath)
@@ -64,6 +71,15 @@ public class TreeMapVisualizer
     public void ExportToPng(LayoutNode layout, String filePath)
     {
         // For legacy compatibility - use traditional PNG export when TreeMetrics are not available
+        _pngExporter.ExportToPng(layout, filePath);
+    }
+
+    public void ExportToRadialPng(TreeNode root, String filePath, NodeStyle nodeStyle = NodeStyle.Circle, Action<String>? progressCallback = null)
+    {
+        progressCallback?.Invoke("Calculating radial layout...");
+        var layout = _radialLayoutCalculator.CalculateLayout(root);
+
+        progressCallback?.Invoke("Exporting to PNG...");
         _pngExporter.ExportToPng(layout, filePath);
     }
 
