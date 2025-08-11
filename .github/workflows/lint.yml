@@ -21,7 +21,7 @@ jobs:
     steps:
       - name: Checkout code
 
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v5
         with:
           # Get all history to be able to identify changed files
           fetch-depth: 0
